@@ -2,5 +2,5 @@
 School project for Haaga Helia. 
   
 In this project we are creating a device to attach discgolf disc. This device will have a buzzer for helping to find the disc if it is thrown in to bush. It will also have sensors for acceleration and gyro, so we can get the top speed and rotation speed of the disc. Gyro sensor will be also used to get the ankle of the disk.
-
+  
 The idea is that the player can you these informations to fix their play.
