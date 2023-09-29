@@ -35,6 +35,17 @@ The idea is that the player can use these information to help better their play.
 
 - The target audience for SmartDisc are frisbee golf professionals, enthusiasts and recreational playet that want to imnprove their game and easily find their lost discs
 
+## ArduinoIDE
+### Linux
+When we first tried uploading code to the ESP32 we got an error code:
+```
+A fatal error occurred: Could not open /dev/ttyUSB0, the port doesn't exist
+```
+this was fixed with giving right permissions to the port
+```
+sudo chmod a+rw /dev/ttyUSB0
+```
+
 ## Tests
 
 Verifying a basic code block with Arduino IDE with success.
