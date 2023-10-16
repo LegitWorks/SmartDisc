@@ -17,7 +17,8 @@ The idea is that the player can use these information to help better their play.
 - Dev board used: ESP32-WROOM  
 ![image](/Pictures/ESP32.jpg)
 - Chips used: MPU-6050 (3 access gyro & accelometer)  
-
+![image](/Pictures/Gyro.jpg)
+![image](/Pictures/Buzzer.jpg)
 <sub>**Further development aims to add features and integrate the chips to the golf disc**</sub>
 
 # SmartDisc
