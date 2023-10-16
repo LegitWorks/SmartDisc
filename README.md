@@ -16,7 +16,7 @@ The idea is that the player can use these information to help better their play.
 - Project developed using ArduinoIDE
 - Dev board used: ESP32-WROOM
 - Chips used: MPU-6050 (3 access gyro & accelometer)  
-!(https://media.discordapp.net/attachments/913061042148499487/1163406804307415110/20230929_100133.jpg?ex=653f7605&is=652d0105&hm=afe2fe04bccabb63cbace95940f46b6895e7d53410db9a23560b789f7d67ff7f&=&width=642&height=733)
+![image](https://media.discordapp.net/attachments/913061042148499487/1163406804307415110/20230929_100133.jpg?ex=653f7605&is=652d0105&hm=afe2fe04bccabb63cbace95940f46b6895e7d53410db9a23560b789f7d67ff7f&=&width=642&height=733)
 
 <sub>**Further development aims to add features and integrate the chips to the golf disc**</sub>
 
