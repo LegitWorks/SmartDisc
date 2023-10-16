@@ -64,3 +64,11 @@ void loop() {
 }
 ```
 ![image](/Pictures/HelloWorld_test.png)
+
+We also tested that the wifi works on the ESP32.  
+![image](/Pictures/Wifi_test.png)
+
+## Acceleration and Gyro
+First we connected the Acceleration/Gyro sensor to the ESP32.
+![image](https://i0.wp.com/randomnerdtutorials.com/wp-content/uploads/2020/12/MPU6050_ESP32_Wiring-Schematic-Diagram.png?w=726&quality=100&strip=all&ssl=1)
+
