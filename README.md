@@ -15,10 +15,10 @@ The idea is that the player can use these information to help better their play.
 
 - Project developed using ArduinoIDE
 - Dev board used: ESP32-WROOM  
-<img src="/Pictures/ESP32.jpg" width= "300" height="200">
+<img src="/Pictures/ESP32.jpg" width= "300" height="280">
 - Chips used: MPU-6050 (3 access gyro & accelometer)  
-![image](/Pictures/Gyro.jpg)
-![image](/Pictures/Buzzer.jpg)
+<img src="/Pictures/Gyro.jpg" width= "300" height="280">
+<img src="/Pictures/Buzzer.jpg" width= "300" height="280">
 <sub>**Further development aims to add features and integrate the chips to the golf disc**</sub>
 
 # SmartDisc
