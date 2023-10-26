@@ -13,7 +13,7 @@ The idea is that the player can use these information to help better their play.
 
 ## Development Tools
 
-- Project developed using [ArduinoIDE[(https://www.arduino.cc/en/software)
+- Project developed using [ArduinoIDE](https://www.arduino.cc/en/software)
 - Dev board used: ESP32-WROOM  
 <img src="/Pictures/ESP32.jpg" width= "300" height="280">
 - Chips used: MPU-6050 (3 access gyro & accelometer)  
