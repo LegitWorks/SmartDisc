@@ -75,8 +75,9 @@ First we connected the Acceleration/Gyro sensor to the ESP32.
 Installed nessessaru libraries (Adafruit MPU6050) for the MPU6050
 Then we tested that the sensor works with example code.  
 <details>
-<summary>The code was found in **file** --> **Examples** --> **Adafruit MPU6050** --> **basic_readings**</summary>
-<br>
+The code was found in `file` --> `Examples` --> `Adafruit MPU6050` --> `basic_readings`
+<summary>Code</summary>
+<br>  
 <pre>
   // Basic demo for accelerometer readings from Adafruit MPU6050
 
