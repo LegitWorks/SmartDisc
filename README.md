@@ -572,7 +572,8 @@ void loop()
 With this we get the offset values.  
 For us those are:
 ```bash
-
+XAccel				YAccel					ZAccel						XGyro				YGyro				ZGyro
+[13,14] --> [0,17]	[557,558] --> [-6,13]	[711,712] --> [16369,16389]	[-8,-7] --> [-2,2]	[5,6] --> [-1,2]	[13,14] --> [-2,1]
 ```
  
 
