@@ -77,7 +77,8 @@ Then we tested that the sensor works with example code.
 <details>
 <summary>The code was found in **file** --> **Examples** --> **Adafruit MPU6050** --> **basic_readings**</summary>
 <br>
-// Basic demo for accelerometer readings from Adafruit MPU6050
+<pre>
+  // Basic demo for accelerometer readings from Adafruit MPU6050
 
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
@@ -194,4 +195,5 @@ void loop() {
   Serial.println("");
   delay(500);
 }
+</pre>
 </details>
