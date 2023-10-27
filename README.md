@@ -47,7 +47,7 @@ this was fixed with giving right permissions to the port
 sudo chmod a+rw /dev/ttyUSB0
 ```
 
-## Tests
+# Tests
 
 Verifying that the chip works by uploading a basic code block to it using Arduino IDE with success.
 
@@ -68,7 +68,12 @@ void loop() {
 We also tested that the wifi works on the ESP32.  
 ![image](/Pictures/Wifi_test.png)
 
-## Acceleration and Gyro
+## Piezo Buzzer (HW-508)
+
+We also tested that the Piezo Buzzer works.
+![video](/Pictures/buzz.mp4)
+
+## Acceleration and Gyro (MPU6050)
 First we connected the Acceleration/Gyro sensor to the ESP32.
 ![image](https://i0.wp.com/randomnerdtutorials.com/wp-content/uploads/2020/12/MPU6050_ESP32_Wiring-Schematic-Diagram.png?w=726&quality=100&strip=all&ssl=1)
 
