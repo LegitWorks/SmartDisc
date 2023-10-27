@@ -71,7 +71,7 @@ We also tested that the wifi works on the ESP32.
 ## Piezo Buzzer (HW-508)
 
 We also tested that the Piezo Buzzer works.
-![video](/Pictures/buzz.mp4)
+![buzz](/Pictures/buzz)
 
 ## Acceleration and Gyro (MPU6050)
 First we connected the Acceleration/Gyro sensor to the ESP32.
