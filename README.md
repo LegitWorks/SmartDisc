@@ -72,6 +72,35 @@ We also tested that the wifi works on the ESP32.
 
 We also tested that the Piezo Buzzer works.
 ![buzz](/Pictures/buzz.mp4)
+<details>
+<summary>Code</summary>
+<br>
+<pre>
+  #include <Arduino.h>
+
+// Define the buzzer pin
+const int buzzerPin = 16; // Define the buzzer pin
+
+void setup() {
+  // Set the buzzer pin as output
+  pinMode(buzzerPin, OUTPUT);
+}
+
+void loop() {
+  // Turn on the buzzer
+  digitalWrite(buzzerPin, HIGH);
+
+  // Delay for 1 second
+  delay(1000);
+
+  // Turn off the buzzer
+  digitalWrite(buzzerPin, LOW);
+
+  // Delay for 1 second
+  delay(1000);
+}
+</pre>
+</details>
 
 ## Acceleration and Gyro (MPU6050)
 First we connected the Acceleration/Gyro sensor to the ESP32.
