@@ -732,7 +732,7 @@ These values were added to the test code
   Serial.println(" rad/s");
 ```
 And these gave us almost perfect 0 value to the gyros when stationary.
-![image](/Pisctures/gyoCali.png)
+![image](/Pisctures/gyroCali.png)
 ## Bluetooth
 Using [this](https://randomnerdtutorials.com/esp32-bluetooth-classic-arduino-ide/) we tried to make bluetooth work and possibly control ESP32 through it.  
 We uploaded the example code from `File` --> `Examples` --> `BluetoothSerial` --> `SerialtoSerialIBT`
