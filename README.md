@@ -790,6 +790,8 @@ To turn on the bluetooth you press the ESP32 Enable button on the ESP32.
 
 Connected the ESP32 to mobile phone with [Serial Bluetoot Terminal](https://play.google.com/store/apps/details?id=de.kai_morich.serial_bluetooth_terminal&hl=en)
 
+## Accelerometer Calibration and Data Reading
+
 This code uses the Adafruit_MPU6050 library to interface with an MPU6050 accelerometer (gyroscope) and perform calibration and data reading on an Arduino platform. The code performs the following actions:
 
 1. Initializes the MPU6050 sensor and checks for its availability.
