@@ -734,7 +734,7 @@ These values were added to the test code
 And these gave us almost perfect 0 value to the gyros when stationary.
 ![image](/Pictures/gyroCali.png)
 
-### FinLizing Accelerometer Calibration and Data Reading
+### Finalizing Accelerometer Calibration and Data Reading
 
 This code uses the Adafruit_MPU6050 library to interface with an MPU6050 accelerometer (gyroscope) and perform calibration and data reading on an Arduino platform. The code performs the following actions:
 
