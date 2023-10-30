@@ -789,3 +789,88 @@ void loop() {
 To turn on the bluetooth you press the ESP32 Enable button on the ESP32.  
 
 Connected the ESP32 to mobile phone with [Serial Bluetoot Terminal](https://play.google.com/store/apps/details?id=de.kai_morich.serial_bluetooth_terminal&hl=en)
+
+This code uses the Adafruit_MPU6050 library to interface with an MPU6050 accelerometer (gyroscope) and perform calibration and data reading on an Arduino platform. The code performs the following actions:
+
+1. Initializes the MPU6050 sensor and checks for its availability.
+2. Performs calibration of the accelerometer, which includes the following steps:
+   - Computes offset values for the accelerometer (average for x, y, and z axes).
+   - Calculates calibration values (gain) for the accelerometer by tilting it in different directions and taking averages for each axis.
+3. In the loop, it reads accelerometer data, applies calibration values (offset and gain), prints the x-axis acceleration value to the serial monitor, and introduces a 1-second delay.
+
+This code helps obtain more accurate acceleration values from the MPU6050 sensor by calibrating its offset and gain values.
+
+Below is the Arduino code embedded in a dropdown menu:
+
+<details>
+<summary>Show Arduino Code</summary>
+
+```cpp
+#include <Adafruit_MPU6050.h>
+
+Adafruit_MPU6050 mpu;
+
+float accelerometer_offset[3];
+float accelerometer_gain[3];
+
+void setup() {
+  Serial.begin(115200);
+
+  // Initialize the accelerometer
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1);  // Halt the program if the sensor initialization fails
+  }
+
+  // Calibrate the accelerometer offset
+  for (int i = 0; i < 3; i++) {
+    accelerometer_offset[i] = 0.0f;
+
+    // Take 100 accelerometer readings and average them
+    for (int j = 0; j < 100; j++) {
+      sensors_event_t a, g, temp;
+      mpu.getEvent(&a, &g, &temp);  // Pass in all three sensor_event_t objects
+
+      accelerometer_offset[i] += a.acceleration.x;
+    }
+
+    accelerometer_offset[i] /= 100.0f;
+  }
+
+  // Calibrate the accelerometer gain
+  for (int i = 0; i < 3; i++) {
+    accelerometer_gain[i] = 1.0f;
+
+    // Take 100 accelerometer readings while tilting the accelerometer in different directions
+    // and average them
+    for (int j = 0; j < 100; j++) {
+      sensors_event_t a, g, temp;
+      mpu.getEvent(&a, &g, &temp);  // Pass in all three sensor_event_t objects
+
+      accelerometer_gain[i] += abs(a.acceleration.x);
+    }
+
+    accelerometer_gain[i] /= 100.0f;
+  }
+}
+
+void loop() {
+  // Read the accelerometer data
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);  // Pass in all three sensor_event_t objects
+
+  // Apply the offset and gain calibration
+  a.acceleration.x -= accelerometer_offset[0];
+  a.acceleration.x *= accelerometer_gain[0];
+
+  // Print the accelerometer data to the serial monitor
+  Serial.print("Accelerometer X: ");
+  Serial.println(a.acceleration.x);
+
+  // Delay for 1 second
+  delay(1000);
+}
+```
+
+</details>
+
