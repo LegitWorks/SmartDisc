@@ -1540,7 +1540,7 @@ void loop() {
 </pre>
 </details>
 
-Whit this the shutdown happens when the acceleration is under 12 and second are under 10. This has still the problem that the seconds keep adding up even thought the acceleration isn't under 12.  
+Whit this the shutdown happens when the acceleration is under 12 and second are 10 or over it. This has still the problem that the seconds keep adding up even thought the acceleration isn't under 12.  
 To fix this we edited the shutdown to add the 0.5 to the scond when acceleration is under 12 and to reset the seconds when it is over it. 
 ```bash
 if (sroot < 12){
