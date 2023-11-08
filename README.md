@@ -983,10 +983,10 @@ Connected the ESP32 to mobile phone with [Serial Bluetooth Terminal](https://pla
 First we open the the menu.  
 ![sbt_settings](/Pictures/sbt_settings.jpg)
 
-We choose devices and select the the device we wan't to connect.  
+We choose devices and select the the device we wan't to connect.    
 ![sbt_connect](Pictures/sbt_connect.jpg)
 
-And then we connect to the device in terminal.
+And then we connect to the device in terminal.  
 ![sbt_terminal](Pictures/sbt_terminal.jpg)
 ### Bluetooth command
 We tried to add command to start the data reading with [Serial Bluetooth Terminal](https://play.google.com/store/apps/details?id=de.kai_morich.serial_bluetooth_terminal&hl=en). To do this we added bluetooth to the example sensor code.
