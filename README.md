@@ -1011,7 +1011,7 @@ BluetoothSerial SerialBT;
 ```
 
 After adding these we can connect to the bluetooth while the sensor is working.  
-Next we needed to add the control to start the reading when given command in [Serial Bluetooth Terminal](https://play.google.com/store/apps/details?id=de.kai_morich.serial_bluetooth_terminal&hl=en).  
+Next we needed to add the control to start the reading when given command in [Serial Bluetooth Terminal](https://play.google.com/store/apps/details?id=de.kai_morich.serial_bluetooth_terminal&hl=en). When testing what different inputs do, we figured out that input 1 gets a value of 49. So we implemented that to the code. 
 ```bash
 int incoming;
 
