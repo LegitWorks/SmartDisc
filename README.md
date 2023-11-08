@@ -1367,3 +1367,13 @@ void loop() {
 
 Now giving the command `1` in Bluetooth terminal the code gives readings while the device is moving fast enough.  
 ![autoStop](Pictures/autoStopReading.png)  
+
+We tried to impliment possible timer to the shutdown. For that we added `double sekunti` to the code and in loop we added `sekunti = sekunti +0.5`, we add 0.5 because the loop has 0.5 second delay.  
+An for the shutdown we added:
+```bash
+if (sroot < 12 && sekunti >= 10){
+        incoming = 0;
+        sekunti = 0;        
+      }
+```
+Whit this the shutdown happens when the acceleration is under 12 and second are under 10. This has still the problem that the seconds keep adding up even thought the acceleration isn't under 12.
