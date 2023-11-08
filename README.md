@@ -1144,44 +1144,44 @@ delay(100);
 
 void loop() {
 
-if (SerialBT.available()) //Check if we receive anything from Bluetooth
-{
-  incoming = SerialBT.read();
-  Serial.print("Received:"); Serial.println(incoming);
-  if (incoming == 49){
-    // Get new sensor events with the readings //
-    sensors_event_t a, g, temp;
-    mpu.getEvent(&a, &g, &temp);
+	if (SerialBT.available()){  //Check if we receive anything from Bluetooth
+	
+  		incoming = SerialBT.read();
+  		Serial.print("Received:"); Serial.println(incoming);
+  		if (incoming == 49){
+    	// Get new sensor events with the readings //
+    	sensors_event_t a, g, temp;
+    	mpu.getEvent(&a, &g, &temp);
 
 
-    // Print out the values //
-    Serial.print("Acceleration X: ");
-    Serial.print(a.acceleration.x);
-    Serial.print(", Y: ");
-    Serial.print(a.acceleration.y);
-    Serial.print(", Z: ");
-    Serial.print(a.acceleration.z);
-    Serial.println(" m/s^2");
+    	// Print out the values //
+    	Serial.print("Acceleration X: ");
+    	Serial.print(a.acceleration.x);
+    	Serial.print(", Y: ");
+    	Serial.print(a.acceleration.y);
+    	Serial.print(", Z: ");
+    	Serial.print(a.acceleration.z);
+    	Serial.println(" m/s^2");
 
 
-    Serial.print("Rotation X: ");
-    Serial.print(g.gyro.x);
-    Serial.print(", Y: ");
-    Serial.print(g.gyro.y);
-    Serial.print(", Z: ");
-    Serial.print(g.gyro.z);
-    Serial.println(" rad/s");
+    	Serial.print("Rotation X: ");
+    	Serial.print(g.gyro.x);
+    	Serial.print(", Y: ");
+    	Serial.print(g.gyro.y);
+    	Serial.print(", Z: ");
+    	Serial.print(g.gyro.z);
+    	Serial.println(" rad/s");
 
 
-    Serial.print("Temperature: ");
-    Serial.print(temp.temperature);
-    Serial.println(" degC");
+    	Serial.print("Temperature: ");
+    	Serial.print(temp.temperature);
+    	Serial.println(" degC");
 
 
-    Serial.println("");
-    delay(500);
-  }
-}
+    	Serial.println("");
+    	delay(500);
+  		}
+	}
 }
 
 </pre>
@@ -1190,3 +1190,180 @@ if (SerialBT.available()) //Check if we receive anything from Bluetooth
 The code partially works.  
 By sendin `1` in Serial Bluetooth Terminal the code gives us reading ones and then automatically shuts down.  
 ![bltTest](Pictures/bltCommandTest.png)
+We added the true acceleration to the code. We got it with calculatin squeroot of `acceleration.x^2 + acceleration.y^2 + acceleration.z ^2`.  Then fixing the automatic shutdown for the terminal command we changed the `if` method to `while`.  
+```bash
+if (incoming == 49){  -->   while (incoming == 49){
+```
+
+And to shutdown the `while` method we added `if` method inside it.  
+```bash
+ if (sroot < 12){
+        incoming = 0;
+      }
+```
+For testing this I need the true acceleration value to be under 12 for the reading to stop. We haven't been able to calibrate acceleration jet so gravity is still in effect and in rest we get acceleration value `11m/s^s`.  
+
+<details>
+<summary>Code</summary>
+<pre>
+  // Basic demo for accelerometer readings from Adafruit MPU6050
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+#include "BluetoothSerial.h"
+
+const char *pin = "1234";
+Adafruit_MPU6050 mpu;
+String device_name = "ESP32-BT-Slave";
+
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run make menuconfig to and enable it
+#endif
+
+
+#if !defined(CONFIG_BT_SPP_ENABLED)
+#error Serial Bluetooth not available or not enabled. It is only available for the ESP32 chip.
+#endif
+
+
+BluetoothSerial SerialBT;
+int incoming;
+
+
+void setup(void) {
+Serial.begin(115200);
+while (!Serial)
+delay(10); // will pause Zero, Leonardo, etc until serial console opens
+
+SerialBT.begin(device_name); 
+Serial.println("Bluetooth Device is Ready to Pair");
+Serial.println("Adafruit MPU6050 test!");
+
+// Try to initialize!
+if (!mpu.begin()) {
+Serial.println("Failed to find MPU6050 chip");
+while (1) {
+delay(10);
+}
+}
+Serial.println("MPU6050 Found!");
+
+
+mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+Serial.print("Accelerometer range set to: ");
+switch (mpu.getAccelerometerRange()) {
+case MPU6050_RANGE_2_G:
+Serial.println("+-2G");
+break;
+case MPU6050_RANGE_4_G:
+Serial.println("+-4G");
+break;
+case MPU6050_RANGE_8_G:
+Serial.println("+-8G");
+break;
+case MPU6050_RANGE_16_G:
+Serial.println("+-16G");
+break;
+}
+mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+Serial.print("Gyro range set to: ");
+switch (mpu.getGyroRange()) {
+case MPU6050_RANGE_250_DEG:
+Serial.println("+- 250 deg/s");
+break;
+case MPU6050_RANGE_500_DEG:
+Serial.println("+- 500 deg/s");
+break;
+case MPU6050_RANGE_1000_DEG:
+Serial.println("+- 1000 deg/s");
+break;
+case MPU6050_RANGE_2000_DEG:
+Serial.println("+- 2000 deg/s");
+break;
+}
+
+
+mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+Serial.print("Filter bandwidth set to: ");
+switch (mpu.getFilterBandwidth()) {
+case MPU6050_BAND_260_HZ:
+Serial.println("260 Hz");
+break;
+case MPU6050_BAND_184_HZ:
+Serial.println("184 Hz");
+break;
+case MPU6050_BAND_94_HZ:
+Serial.println("94 Hz");
+break;
+case MPU6050_BAND_44_HZ:
+Serial.println("44 Hz");
+break;
+case MPU6050_BAND_21_HZ:
+Serial.println("21 Hz");
+break;
+case MPU6050_BAND_10_HZ:
+Serial.println("10 Hz");
+break;
+case MPU6050_BAND_5_HZ:
+Serial.println("5 Hz");
+break;
+}
+
+
+Serial.println("");
+delay(100);
+}
+
+
+void loop() {
+
+	if (SerialBT.available()){  //Check if we receive anything from Bluetooth
+	
+  		incoming = SerialBT.read();
+  		Serial.print("Received:"); Serial.println(incoming);
+  		while (incoming == 49){
+    	// Get new sensor events with the readings //
+    	sensors_event_t a, g, temp;
+    	mpu.getEvent(&a, &g, &temp);
+
+
+    	// Print out the values //
+    	Serial.print("Acceleration X: ");
+    	Serial.print(a.acceleration.x);
+    	Serial.print(", Y: ");
+    	Serial.print(a.acceleration.y);
+    	Serial.print(", Z: ");
+    	Serial.print(a.acceleration.z);
+      Serial.print(", True: ");
+      double sroot = sqrt(pow(a.acceleration.x,2) + pow(a.acceleration.y,2) + pow(a.acceleration.z,2));
+      Serial.print(sroot);
+    	Serial.println(" m/s^2");
+
+
+    	Serial.print("Rotation X: ");
+    	Serial.print(g.gyro.x);
+    	Serial.print(", Y: ");
+    	Serial.print(g.gyro.y);
+    	Serial.print(", Z: ");
+    	Serial.print(g.gyro.z);
+    	Serial.println(" rad/s");
+
+
+    	Serial.print("Temperature: ");
+    	Serial.print(temp.temperature);
+    	Serial.println(" degC");
+
+
+    	Serial.println("");
+    	delay(500);
+      if (sroot < 12){
+        incoming = 0;
+      }
+  		}
+	}
+}
+</pre>
+</details>
+
+Now giving the command `1` in Bluetooth terminal the code gives readings while the device is moving fast enough.  
+![autoStop](Pictures/autoStopReading.png)  
