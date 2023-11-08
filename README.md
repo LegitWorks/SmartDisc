@@ -1540,4 +1540,17 @@ void loop() {
 </pre>
 </details>
 
-Whit this the shutdown happens when the acceleration is under 12 and second are under 10. This has still the problem that the seconds keep adding up even thought the acceleration isn't under 12.
+Whit this the shutdown happens when the acceleration is under 12 and second are under 10. This has still the problem that the seconds keep adding up even thought the acceleration isn't under 12.  
+To fix this we edited the shutdown to add the 0.5 to the scond when acceleration is under 12 and to reset the seconds when it is over it. 
+```bash
+if (sroot < 12){
+   sekunti = sekunti + 0.5;
+}else{
+   sekunti = 0;
+}
+if (sekunti >= 10) {
+   incoming = 0;
+   sekunti = 0;
+}
+```
+Whit this the seconds reset when acceleration is over 12 and the shutdown happens only if the device is stationary 10 seconds.
