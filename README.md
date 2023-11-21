@@ -1380,9 +1380,9 @@ if (sroot < 12 && sekunti >= 10){
 <summary>Code</summary>
 <pre>
   // Basic demo for accelerometer readings from Adafruit MPU6050
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
-#include <Wire.h>
+#include "Adafruit_MPU6050.h"
+#include "Adafruit_Sensor.h"
+#include "Wire.h"
 #include "BluetoothSerial.h"
 
 const char *pin = "1234";
