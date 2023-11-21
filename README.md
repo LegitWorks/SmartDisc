@@ -1207,9 +1207,9 @@ For testing this I need the true acceleration value to be under 12 for the readi
 <summary>Code</summary>
 <pre>
   // Basic demo for accelerometer readings from Adafruit MPU6050
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
-#include <Wire.h>
+#include "Adafruit_MPU6050.h"
+#include "Adafruit_Sensor.h"
+#include "Wire.h"
 #include "BluetoothSerial.h"
 
 const char *pin = "1234";
