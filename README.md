@@ -74,41 +74,6 @@ void loop() {
 We also tested that the wifi works on the ESP32.  
 ![image](/Pictures/Wifi_test.png)
 
-## Piezo Buzzer (HW-508)
-
-We also tested that the Piezo Buzzer works.
-![buzz](/Pictures/buzz.mp4)
-
-<details>
-<summary>Code</summary>
-<br>
-<pre>
-  #include <Arduino.h>
-
-// Define the buzzer pin
-const int buzzerPin = 16; // Define the buzzer pin
-
-void setup() {
-// Set the buzzer pin as output
-pinMode(buzzerPin, OUTPUT);
-}
-
-void loop() {
-// Turn on the buzzer
-digitalWrite(buzzerPin, HIGH);
-
-// Delay for 1 second
-delay(1000);
-
-// Turn off the buzzer
-digitalWrite(buzzerPin, LOW);
-
-// Delay for 1 second
-delay(1000);
-}
-
-</pre>
-</details>
 
 ## Acceleration and Gyro (MPU6050)
 
@@ -1554,3 +1519,108 @@ if (sekunti >= 10) {
 }
 ```
 Whit this the seconds reset when acceleration is over 12 and the shutdown happens only if the device is stationary 10 seconds.
+
+## Piezo Buzzer (HW-508)
+
+We also tested that the Piezo Buzzer works.
+![buzz](/Pictures/buzz.mp4)
+
+<details>
+<summary>Code</summary>
+<br>
+<pre>
+  #include <Arduino.h>
+
+// Define the buzzer pin
+const int buzzerPin = 16; // Define the buzzer pin
+
+void setup() {
+// Set the buzzer pin as output
+pinMode(buzzerPin, OUTPUT);
+}
+
+void loop() {
+// Turn on the buzzer
+digitalWrite(buzzerPin, HIGH);
+
+// Delay for 1 second
+delay(1000);
+
+// Turn off the buzzer
+digitalWrite(buzzerPin, LOW);
+
+// Delay for 1 second
+delay(1000);
+}
+
+</pre>
+</details>
+
+With the following code we made it so that you can control buzzer withnthe bluetooth terminal, giving the command `1` the burrez goes on and with `0` it goes off.
+<details>
+<summary>Code</summary>
+<pre>
+#include "BluetoothSerial.h"
+
+BluetoothSerial SerialBT;
+
+const int relayPin = 16;  // Replace with the GPIO pin connected to the HW-508 control pin
+bool isRelayOn = false;
+
+void setup() {
+  Serial.begin(115200);
+  SerialBT.begin("ESP32_BT_Control");  // Bluetooth device name
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, LOW);  // Turn off the relay initially
+  isRelayOn = false;  // Update the initial state variable
+}
+
+void loop() {
+  static String receivedCommand = "";
+  static unsigned long lastCommandTime = 0;
+  const unsigned long commandTimeout = 100;  // Adjust as needed
+
+  while (SerialBT.available()) {
+    char command = SerialBT.read();
+    if (command == '\n') {
+      // End of command received, process it
+      processCommand(receivedCommand);
+      // Reset for the next command
+      receivedCommand = "";
+    } else {
+      // Append to the command
+      receivedCommand += command;
+      lastCommandTime = millis();
+    }
+  }
+
+  // Check for a complete command with a timeout
+  if (millis() - lastCommandTime > commandTimeout && !receivedCommand.isEmpty()) {
+    processCommand(receivedCommand);
+    // Reset for the next command
+    receivedCommand = "";
+  }
+
+  // Additional logic as needed
+
+  delay(20);  // Allow time for Bluetooth communication
+}
+
+void processCommand(String command) {
+  command.trim();  // Remove leading and trailing whitespace
+  Serial.print("Received command: ");
+  Serial.println(command);
+
+  if (command == "1") {
+    digitalWrite(relayPin, HIGH);  // Turn off the relay
+    isRelayOn = false;
+    Serial.println("Relay turned on");
+  } else if (command == "0") {
+    digitalWrite(relayPin, LOW);  // Turn on the relay
+    isRelayOn = true;
+    Serial.println("Relay turned off");
+  }
+
+}
+</pre>
+<details>
