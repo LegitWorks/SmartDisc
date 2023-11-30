@@ -1623,7 +1623,7 @@ void processCommand(String command) {
 
 }
 </pre>
-<details>
+</details>
 
 Now that we could control the beeper it was time to implicate this to the previously made code.  
 <details>
