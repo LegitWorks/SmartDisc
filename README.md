@@ -1556,7 +1556,7 @@ delay(1000);
 </pre>
 </details>
 
-With the following code we made it so that you can control buzzer withnthe bluetooth terminal, giving the command `1` the burrez goes on and with `0` it goes off.
+With the following code we made it so that you can control buzzer withnthe bluetooth terminal, giving the command `1` the burrez goes on and with `0` it goes off. To achieve this we used the [this](https://esp32io.com/tutorials/esp32-button-piezo-buzzer) tutorial modifying it to the buzzer instead of LED.
 <details>
 <summary>Code</summary>
 <pre>
@@ -1822,4 +1822,248 @@ void processCommand(String command) {
 }
 </pre>
 </details>
+
+# Saving readings
+Now we tried to save the reading in to the ESP32 so we can see them with a command. So we needed to add following thing in to the code:
+```bash
+#include "SPIFFS.h"
+
+void setup(){
+	if (!SPIFFS.begin()) {
+	    Serial.println("Failed to mount file system");
+	    return;
+	  }
+	
+	  dataFile = SPIFFS.open("/sensor_data.txt", "a"); // Open the file for appending
+	  if (!dataFile) {
+	    Serial.println("Failed to open file for writing");
+	    return;
+	  }
+	  // existing code...
+}
+
+
+
+void saveDataToFile(float accelX, float accelY, float accelZ, float gyroX, float gyroY, float gyroZ) {
+  // Save sensor data to file
+  dataFile.print("Acceleration X: ");
+  dataFile.print(accelX);
+  dataFile.print(", Y: ");
+  dataFile.print(accelY);
+  dataFile.print(", Z: ");
+  dataFile.print(accelZ);
+  dataFile.print(", Rotation X: ");
+  dataFile.print(gyroX);
+  dataFile.print(", Y: ");
+  dataFile.print(gyroY);
+  dataFile.print(", Z: ");
+  dataFile.print(gyroZ);
+  dataFile.println();
+}
+```
+
+We also needed to edit the exiting code. We needed to edit the code handeling the incoming command so we could get rid of `while loop`. This helps us to add new thing to the code more easily. 
+<details>
+<summary>Code</summary>
+<pre>
+#include "Adafruit_MPU6050.h"
+#include "Adafruit_Sensor.h"
+#include "Wire.h"
+#include "BluetoothSerial.h"
+#include "SPIFFS.h"
+
+const int relayPin = 16;
+bool isRelayOn = false;
+
+Adafruit_MPU6050 mpu;
+String device_name = "ESP32-BT-Slave";
+
+BluetoothSerial SerialBT;
+String incoming; // Bluetooth command
+double sekunti;   // For getting time
+
+File dataFile;
+
+void processCommand(String command);
+void saveDataToFile(float accelX, float accelY, float accelZ, float gyroX, float gyroY, float gyroZ);
+
+void setup(void) {
+  Serial.begin(115200);
+  while (!Serial)
+    delay(10);
+
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, LOW);
+  isRelayOn = false;
+
+  SerialBT.begin(device_name);
+  Serial.println("Bluetooth Device is Ready to Pair");
+  Serial.println("Adafruit MPU6050 test!");
+
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  Serial.println("MPU6050 Found!");
+
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+  if (!SPIFFS.begin()) {
+    Serial.println("Failed to mount file system");
+    return;
+  }
+
+  dataFile = SPIFFS.open("/sensor_data.txt", "a"); // Open the file for appending
+  if (!dataFile) {
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+
+  delay(100);
+}
+
+void loop() {
+  static String receivedCommand = "";
+  static unsigned long lastCommandTime = 0;
+  const unsigned long commandTimeout = 100; // Adjust as needed
+
+  while (SerialBT.available()) {
+    char command = SerialBT.read();
+    if (command == '\n') {
+      processCommand(receivedCommand);
+      receivedCommand = "";
+    } else {
+      receivedCommand += command;
+      lastCommandTime = millis();
+    }
+  }
+
+  if (millis() - lastCommandTime > commandTimeout) {
+    receivedCommand = "";
+  }
+
+  if (incoming == "start") {
+    // Get new sensor events with the readings //
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+
+    // Print out the values //
+    Serial.print("Acceleration X: ");
+    Serial.print(a.acceleration.x);
+    Serial.print(", Y: ");
+    Serial.print(a.acceleration.y);
+    Serial.print(", Z: ");
+    Serial.print(a.acceleration.z);
+    Serial.print(", True: ");
+    double sroot = sqrt(pow(a.acceleration.x, 2) + pow(a.acceleration.y, 2) + pow(a.acceleration.z, 2));
+    Serial.print(sroot);
+    Serial.println(" m/s^2");
+
+    Serial.print("Rotation X: ");
+    Serial.print(g.gyro.x);
+    Serial.print(", Y: ");
+    Serial.print(g.gyro.y);
+    Serial.print(", Z: ");
+    Serial.print(g.gyro.z);
+    Serial.println(" rad/s");
+    sekunti = sekunti + 0.5;
+
+    Serial.print("Temperature: ");
+    Serial.print(temp.temperature);
+    Serial.println(" degC");
+
+    // Save data to file
+    saveDataToFile(a.acceleration.x, a.acceleration.y, a.acceleration.z, g.gyro.x, g.gyro.y, g.gyro.z);
+
+    Serial.println("");
+    delay(500);
+
+    if (sroot < 12 && sekunti >= 10) {
+      incoming = "stop";
+      sekunti = 0;
+    }
+  }
+}
+
+void processCommand(String command) {
+  command.trim(); // Remove leading and trailing whitespace
+  Serial.print("Received command: ");
+  Serial.println(command);
+
+  if (command == "1") {
+    digitalWrite(relayPin, HIGH); // Turn off the relay
+    isRelayOn = false;
+    Serial.println("Relay turned on");
+  } else if (command == "0") {
+    digitalWrite(relayPin, LOW); // Turn on the relay
+    isRelayOn = true;
+    Serial.println("Relay turned off");
+  } else if (command == "start") {
+    incoming = "start";
+  }
+}
+
+void saveDataToFile(float accelX, float accelY, float accelZ, float gyroX, float gyroY, float gyroZ) {
+  // Save sensor data to file
+  dataFile.print("Acceleration X: ");
+  dataFile.print(accelX);
+  dataFile.print(", Y: ");
+  dataFile.print(accelY);
+  dataFile.print(", Z: ");
+  dataFile.print(accelZ);
+  dataFile.print(", Rotation X: ");
+  dataFile.print(gyroX);
+  dataFile.print(", Y: ");
+  dataFile.print(gyroY);
+  dataFile.print(", Z: ");
+  dataFile.print(gyroZ);
+  dataFile.println();
+}
+</pre>
+</details>
+  
+Then we added command to show the saved data.
+``` bash
+void loop(){
+	// Existing code...
+	} else if (incoming == "show") {
+	    showSavedData();
+	    incoming = "";
+	  }
+}
+
+void processCommand(String command) {
+	// Existing code...
+	} else if (command == "show")
+}	
+```
+
+After this when trying if this works we got an error with mounting the file system.
+```bash
+E (813) SPIFFS: mount failed, -10025
+Failed to mount file system
+```
+
+With googling we didn't get any clear awnser why this was happening so we ended up asking [chatgpt](https://chat.openai.com/) what might cause this error. With the awnsers we got we ended up trying to format the filesystem. For this we used [this](https://techtutorialsx.com/2019/02/24/esp32-arduino-formatting-the-spiffs-file-system/) site and ended up with the following code.
+```bash
+#include "FS.h"
+
+void setup() {
+  Serial.begin(115200);
+
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to format SPIFFS");
+    return;
+  }
+
+  Serial.println("SPIFFS formatted successfully");
+}
+
+```
+
+After uploading this to ESP32 and reuploading the previous code, the file system was succesfully mounted.
 
