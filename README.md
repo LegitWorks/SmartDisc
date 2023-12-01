@@ -1823,7 +1823,7 @@ void processCommand(String command) {
 </pre>
 </details>
   
-https://www.youtube.com/embed/DhF-aahLY1A?si=TZd3BNBJhZPttrgc
+[![Video](https://www.youtube.com/watch?v=DhF-aahLY1A.png)](https://www.youtube.com/embed/DhF-aahLY1A?si=TZd3BNBJhZPttrgc)
 
 # Saving readings
 Now we tried to save the reading in to the ESP32 so we can see them with a command. So we needed to add following thing in to the code:
