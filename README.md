@@ -74,7 +74,6 @@ void loop() {
 We also tested that the wifi works on the ESP32.  
 ![image](/Pictures/Wifi_test.png)
 
-
 ## Acceleration and Gyro (MPU6050)
 
 First we connected the Acceleration/Gyro sensor to the ESP32.
@@ -885,6 +884,144 @@ void loop() {
 
 </details>
 
+We realized that our caliibration only affected the X axis and that we needed to make a calibration that takes in account the dispersion of the gravitational acceleration on all axes.
+For this we needed to implement a high-pass filter. We first implemented it on the basic readings example from before, beacuse we figured it would be quick to implement and reliable.
+
+<details>
+<summary>Code</summary>
+<br>
+
+```cpp
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+
+Adafruit_MPU6050 mpu;
+
+const float alpha = 0.8; // Adjust alpha based on the filter requirements
+
+float accelXFiltered = 0.0;
+float accelYFiltered = 0.0;
+float accelZFiltered = 0.0;
+
+void setup(void) {
+  Serial.begin(115200);
+  while (!Serial)
+    delay(10); // will pause Zero, Leonardo, etc until serial console opens
+
+  Serial.println("Adafruit MPU6050 test!");
+
+  // Try to initialize!
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  Serial.println("MPU6050 Found!");
+
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  Serial.print("Accelerometer range set to: ");
+  switch (mpu.getAccelerometerRange()) {
+    case MPU6050_RANGE_2_G:
+      Serial.println("+-2G");
+      break;
+    case MPU6050_RANGE_4_G:
+      Serial.println("+-4G");
+      break;
+    case MPU6050_RANGE_8_G:
+      Serial.println("+-8G");
+      break;
+    case MPU6050_RANGE_16_G:
+      Serial.println("+-16G");
+      break;
+  }
+
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  Serial.print("Gyro range set to: ");
+  switch (mpu.getGyroRange()) {
+    case MPU6050_RANGE_250_DEG:
+      Serial.println("+- 250 deg/s");
+      break;
+    case MPU6050_RANGE_500_DEG:
+      Serial.println("+- 500 deg/s");
+      break;
+    case MPU6050_RANGE_1000_DEG:
+      Serial.println("+- 1000 deg/s");
+      break;
+    case MPU6050_RANGE_2000_DEG:
+      Serial.println("+- 2000 deg/s");
+      break;
+  }
+
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+  Serial.print("Filter bandwidth set to: ");
+  switch (mpu.getFilterBandwidth()) {
+    case MPU6050_BAND_260_HZ:
+      Serial.println("260 Hz");
+      break;
+    case MPU6050_BAND_184_HZ:
+      Serial.println("184 Hz");
+      break;
+    case MPU6050_BAND_94_HZ:
+      Serial.println("94 Hz");
+      break;
+    case MPU6050_BAND_44_HZ:
+      Serial.println("44 Hz");
+      break;
+    case MPU6050_BAND_21_HZ:
+      Serial.println("21 Hz");
+      break;
+    case MPU6050_BAND_10_HZ:
+      Serial.println("10 Hz");
+      break;
+    case MPU6050_BAND_5_HZ:
+      Serial.println("5 Hz");
+      break;
+  }
+
+  Serial.println("");
+  delay(100);
+}
+
+void loop() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  // High-pass filter for accelerometer readings
+  accelXFiltered = alpha * accelXFiltered + (1.0 - alpha) * a.acceleration.x;
+  accelYFiltered = alpha * accelYFiltered + (1.0 - alpha) * a.acceleration.y;
+  accelZFiltered = alpha * accelZFiltered + (1.0 - alpha) * a.acceleration.z;
+
+  /* Print out the values */
+  Serial.print("Acceleration X: ");
+  Serial.print(a.acceleration.x - accelXFiltered);
+  Serial.print(", Y: ");
+  Serial.print(a.acceleration.y - accelYFiltered);
+  Serial.print(", Z: ");
+  Serial.print(a.acceleration.z - accelZFiltered);
+  Serial.println(" m/s^2");
+
+  Serial.print("Rotation X: ");
+  Serial.print(g.gyro.x - 0.0449);
+  Serial.print(", Y: ");
+  Serial.print(g.gyro.y - 0.0364);
+  Serial.print(", Z: ");
+  Serial.print(g.gyro.z - 0.0154);
+  Serial.println(" rad/s");
+
+  Serial.print("Temperature: ");
+  Serial.print(temp.temperature);
+  Serial.println(" degC");
+
+  Serial.println("");
+  delay(500);
+}
+
+```
+
+</details>
+
 ## Bluetooth
 
 Using [this](https://randomnerdtutorials.com/esp32-bluetooth-classic-arduino-ide/) we tried to make bluetooth work and possibly control ESP32 through it.  
@@ -948,13 +1085,16 @@ Connected the ESP32 to mobile phone with [Serial Bluetooth Terminal](https://pla
 First we open the the menu.  
 ![sbt_settings](/Pictures/sbt_settings.jpg)
 
-We choose devices and select the the device we wan't to connect.    
+We choose devices and select the the device we wan't to connect.  
 ![sbt_connect](Pictures/sbt_connect.jpg)
 
 And then we connect to the device in terminal.  
 ![sbt_terminal](Pictures/sbt_terminal.jpg)
+
 ### Bluetooth command
+
 We tried to add command to start the data reading with [Serial Bluetooth Terminal](https://play.google.com/store/apps/details?id=de.kai_morich.serial_bluetooth_terminal&hl=en). To do this we added bluetooth to the example sensor code.
+
 ```bash
 #include "BluetoothSerial.h"
 
@@ -976,12 +1116,13 @@ BluetoothSerial SerialBT;
 ```
 
 After adding these we can connect to the bluetooth while the sensor is working.  
-Next we needed to add the control to start the reading when given command in [Serial Bluetooth Terminal](https://play.google.com/store/apps/details?id=de.kai_morich.serial_bluetooth_terminal&hl=en). When testing what different inputs do, we figured out that input 1 gets a value of 49. So we implemented that to the code. 
+Next we needed to add the control to start the reading when given command in [Serial Bluetooth Terminal](https://play.google.com/store/apps/details?id=de.kai_morich.serial_bluetooth_terminal&hl=en). When testing what different inputs do, we figured out that input 1 gets a value of 49. So we implemented that to the code.
+
 ```bash
 int incoming;
 
 void setup(void){
-	SerialBT.begin(device_name); 
+	SerialBT.begin(device_name);
 	Serial.println("Bluetooth Device is Ready to Pair");
 }
 
@@ -1005,7 +1146,7 @@ if (SerialBT.available()) //Check if we receive anything from Bluetooth
 #include <Wire.h>
 #include "BluetoothSerial.h"
 
-const char *pin = "1234";
+const char \*pin = "1234";
 Adafruit_MPU6050 mpu;
 String device_name = "ESP32-BT-Slave";
 
@@ -1013,11 +1154,9 @@ String device_name = "ESP32-BT-Slave";
 #error Bluetooth is not enabled! Please run make menuconfig to and enable it
 #endif
 
-
 #if !defined(CONFIG_BT_SPP_ENABLED)
 #error Serial Bluetooth not available or not enabled. It is only available for the ESP32 chip.
 #endif
-
 
 BluetoothSerial SerialBT;
 int incoming;
@@ -1027,7 +1166,7 @@ Serial.begin(115200);
 while (!Serial)
 delay(10); // will pause Zero, Leonardo, etc until serial console opens
 
-SerialBT.begin(device_name); 
+SerialBT.begin(device_name);
 Serial.println("Bluetooth Device is Ready to Pair");
 Serial.println("Adafruit MPU6050 test!");
 
@@ -1039,7 +1178,6 @@ delay(10);
 }
 }
 Serial.println("MPU6050 Found!");
-
 
 mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
 Serial.print("Accelerometer range set to: ");
@@ -1074,7 +1212,6 @@ Serial.println("+- 2000 deg/s");
 break;
 }
 
-
 mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 Serial.print("Filter bandwidth set to: ");
 switch (mpu.getFilterBandwidth()) {
@@ -1101,23 +1238,20 @@ Serial.println("5 Hz");
 break;
 }
 
-
 Serial.println("");
 delay(100);
 }
 
-
 void loop() {
 
-	if (SerialBT.available()){  //Check if we receive anything from Bluetooth
-	
-  		incoming = SerialBT.read();
-  		Serial.print("Received:"); Serial.println(incoming);
-  		if (incoming == 49){
-    	// Get new sensor events with the readings //
-    	sensors_event_t a, g, temp;
-    	mpu.getEvent(&a, &g, &temp);
+    if (SerialBT.available()){  //Check if we receive anything from Bluetooth
 
+incoming = SerialBT.read();
+Serial.print("Received:"); Serial.println(incoming);
+if (incoming == 49){
+// Get new sensor events with the readings //
+sensors_event_t a, g, temp;
+mpu.getEvent(&a, &g, &temp);
 
     	// Print out the values //
     	Serial.print("Acceleration X: ");
@@ -1145,8 +1279,9 @@ void loop() {
 
     	Serial.println("");
     	delay(500);
-  		}
-	}
+
+}
+}
 }
 
 </pre>
@@ -1155,18 +1290,21 @@ void loop() {
 The code partially works.  
 By sendin `1` in Serial Bluetooth Terminal the code gives us reading ones and then automatically shuts down.  
 ![bltTest](Pictures/bltCommandTest.png)
-We added the true acceleration to the code. We got it with calculatin squeroot of `acceleration.x^2 + acceleration.y^2 + acceleration.z ^2`.  Then fixing the automatic shutdown for the terminal command we changed the `if` method to `while`.  
+We added the true acceleration to the code. We got it with calculatin squeroot of `acceleration.x^2 + acceleration.y^2 + acceleration.z ^2`. Then fixing the automatic shutdown for the terminal command we changed the `if` method to `while`.
+
 ```bash
 if (incoming == 49){  -->   while (incoming == 49){
 ```
 
-And to shutdown the `while` method we added `if` method inside it.  
+And to shutdown the `while` method we added `if` method inside it.
+
 ```bash
  if (sroot < 12){
         incoming = 0;
       }
 ```
-For testing this I need the true acceleration value to be under 12 for the reading to stop. We haven't been able to calibrate acceleration jet so gravity is still in effect and in rest we get acceleration value `11m/s^s`.  
+
+For testing this I need the true acceleration value to be under 12 for the reading to stop. We haven't been able to calibrate acceleration jet so gravity is still in effect and in rest we get acceleration value `11m/s^s`.
 
 <details>
 <summary>Code</summary>
@@ -1177,7 +1315,7 @@ For testing this I need the true acceleration value to be under 12 for the readi
 #include "Wire.h"
 #include "BluetoothSerial.h"
 
-const char *pin = "1234";
+const char \*pin = "1234";
 Adafruit_MPU6050 mpu;
 String device_name = "ESP32-BT-Slave";
 
@@ -1185,22 +1323,19 @@ String device_name = "ESP32-BT-Slave";
 #error Bluetooth is not enabled! Please run make menuconfig to and enable it
 #endif
 
-
 #if !defined(CONFIG_BT_SPP_ENABLED)
 #error Serial Bluetooth not available or not enabled. It is only available for the ESP32 chip.
 #endif
 
-
 BluetoothSerial SerialBT;
 int incoming;
-
 
 void setup(void) {
 Serial.begin(115200);
 while (!Serial)
 delay(10); // will pause Zero, Leonardo, etc until serial console opens
 
-SerialBT.begin(device_name); 
+SerialBT.begin(device_name);
 Serial.println("Bluetooth Device is Ready to Pair");
 Serial.println("Adafruit MPU6050 test!");
 
@@ -1212,7 +1347,6 @@ delay(10);
 }
 }
 Serial.println("MPU6050 Found!");
-
 
 mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
 Serial.print("Accelerometer range set to: ");
@@ -1247,7 +1381,6 @@ Serial.println("+- 2000 deg/s");
 break;
 }
 
-
 mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 Serial.print("Filter bandwidth set to: ");
 switch (mpu.getFilterBandwidth()) {
@@ -1274,23 +1407,20 @@ Serial.println("5 Hz");
 break;
 }
 
-
 Serial.println("");
 delay(100);
 }
 
-
 void loop() {
 
-	if (SerialBT.available()){  //Check if we receive anything from Bluetooth
-	
-  		incoming = SerialBT.read();
-  		Serial.print("Received:"); Serial.println(incoming);
-  		while (incoming == 49){
-    	// Get new sensor events with the readings //
-    	sensors_event_t a, g, temp;
-    	mpu.getEvent(&a, &g, &temp);
+    if (SerialBT.available()){  //Check if we receive anything from Bluetooth
 
+incoming = SerialBT.read();
+Serial.print("Received:"); Serial.println(incoming);
+while (incoming == 49){
+// Get new sensor events with the readings //
+sensors_event_t a, g, temp;
+mpu.getEvent(&a, &g, &temp);
 
     	// Print out the values //
     	Serial.print("Acceleration X: ");
@@ -1324,23 +1454,27 @@ void loop() {
       if (sroot < 12){
         incoming = 0;
       }
-  		}
-	}
+
 }
+}
+}
+
 </pre>
 </details>
 
 Now giving the command `1` in Bluetooth terminal the code gives readings while the device is moving fast enough.  
-![autoStop](Pictures/autoStopReading.png)  
+![autoStop](Pictures/autoStopReading.png)
 
 We tried to impliment possible timer to the shutdown. For that we added `double sekunti` to the code and in loop we added `sekunti = sekunti +0.5`, we add 0.5 because the loop has 0.5 second delay.  
 An for the shutdown we added:
+
 ```bash
 if (sroot < 12 && sekunti >= 10){
         incoming = 0;
-        sekunti = 0;        
+        sekunti = 0;
       }
 ```
+
 <details>
 <summary>Code</summary>
 <pre>
@@ -1350,7 +1484,7 @@ if (sroot < 12 && sekunti >= 10){
 #include "Wire.h"
 #include "BluetoothSerial.h"
 
-const char *pin = "1234";
+const char \*pin = "1234";
 Adafruit_MPU6050 mpu;
 String device_name = "ESP32-BT-Slave";
 
@@ -1358,23 +1492,20 @@ String device_name = "ESP32-BT-Slave";
 #error Bluetooth is not enabled! Please run make menuconfig to and enable it
 #endif
 
-
 #if !defined(CONFIG_BT_SPP_ENABLED)
 #error Serial Bluetooth not available or not enabled. It is only available for the ESP32 chip.
 #endif
 
-
 BluetoothSerial SerialBT;
 int incoming;
 double sekunti;
-
 
 void setup(void) {
 Serial.begin(115200);
 while (!Serial)
 delay(10); // will pause Zero, Leonardo, etc until serial console opens
 
-SerialBT.begin(device_name); 
+SerialBT.begin(device_name);
 Serial.println("Bluetooth Device is Ready to Pair");
 Serial.println("Adafruit MPU6050 test!");
 
@@ -1386,7 +1517,6 @@ delay(10);
 }
 }
 Serial.println("MPU6050 Found!");
-
 
 mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
 Serial.print("Accelerometer range set to: ");
@@ -1421,7 +1551,6 @@ Serial.println("+- 2000 deg/s");
 break;
 }
 
-
 mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 Serial.print("Filter bandwidth set to: ");
 switch (mpu.getFilterBandwidth()) {
@@ -1448,23 +1577,20 @@ Serial.println("5 Hz");
 break;
 }
 
-
 Serial.println("");
 delay(100);
 }
 
-
 void loop() {
 
-	if (SerialBT.available()){  //Check if we receive anything from Bluetooth
-	
-  		incoming = SerialBT.read();
-  		Serial.print("Received:"); Serial.println(incoming);
-  		while (incoming == 49){
-    	// Get new sensor events with the readings //
-    	sensors_event_t a, g, temp;
-    	mpu.getEvent(&a, &g, &temp);
+    if (SerialBT.available()){  //Check if we receive anything from Bluetooth
 
+incoming = SerialBT.read();
+Serial.print("Received:"); Serial.println(incoming);
+while (incoming == 49){
+// Get new sensor events with the readings //
+sensors_event_t a, g, temp;
+mpu.getEvent(&a, &g, &temp);
 
     	// Print out the values //
     	Serial.print("Acceleration X: ");
@@ -1497,16 +1623,19 @@ void loop() {
     	delay(500);
       if (sroot < 12 && sekunti >= 10){
         incoming = 0;
-        sekunti = 0;        
+        sekunti = 0;
       }
-  		}
-	}
+
 }
+}
+}
+
 </pre>
 </details>
 
 Whit this the shutdown happens when the acceleration is under 12 and second are 10 or over it. This has still the problem that the seconds keep adding up even thought the acceleration isn't under 12.  
-To fix this we edited the shutdown to add the 0.5 to the scond when acceleration is under 12 and to reset the seconds when it is over it. 
+To fix this we edited the shutdown to add the 0.5 to the scond when acceleration is under 12 and to reset the seconds when it is over it.
+
 ```bash
 if (sroot < 12){
    sekunti = sekunti + 0.5;
@@ -1518,6 +1647,7 @@ if (sekunti >= 10) {
    sekunti = 0;
 }
 ```
+
 Whit this the seconds reset when acceleration is over 12 and the shutdown happens only if the device is stationary 10 seconds.
 
 ## Piezo Buzzer (HW-508)
@@ -1557,6 +1687,7 @@ delay(1000);
 </details>
 
 With the following code we made it so that you can control buzzer withnthe bluetooth terminal, giving the command `1` the burrez goes on and with `0` it goes off. To achieve this we used the [this](https://esp32io.com/tutorials/esp32-button-piezo-buzzer) tutorial modifying it to the buzzer instead of LED.
+
 <details>
 <summary>Code</summary>
 <pre>
@@ -1564,68 +1695,70 @@ With the following code we made it so that you can control buzzer withnthe bluet
 
 BluetoothSerial SerialBT;
 
-const int relayPin = 16;  // Replace with the GPIO pin connected to the HW-508 control pin
+const int relayPin = 16; // Replace with the GPIO pin connected to the HW-508 control pin
 bool isRelayOn = false;
 
 void setup() {
-  Serial.begin(115200);
-  SerialBT.begin("ESP32_BT_Control");  // Bluetooth device name
-  pinMode(relayPin, OUTPUT);
-  digitalWrite(relayPin, LOW);  // Turn off the relay initially
-  isRelayOn = false;  // Update the initial state variable
+Serial.begin(115200);
+SerialBT.begin("ESP32_BT_Control"); // Bluetooth device name
+pinMode(relayPin, OUTPUT);
+digitalWrite(relayPin, LOW); // Turn off the relay initially
+isRelayOn = false; // Update the initial state variable
 }
 
 void loop() {
-  static String receivedCommand = "";
-  static unsigned long lastCommandTime = 0;
-  const unsigned long commandTimeout = 100;  // Adjust as needed
+static String receivedCommand = "";
+static unsigned long lastCommandTime = 0;
+const unsigned long commandTimeout = 100; // Adjust as needed
 
-  while (SerialBT.available()) {
-    char command = SerialBT.read();
-    if (command == '\n') {
-      // End of command received, process it
-      processCommand(receivedCommand);
-      // Reset for the next command
-      receivedCommand = "";
-    } else {
-      // Append to the command
-      receivedCommand += command;
-      lastCommandTime = millis();
-    }
-  }
+while (SerialBT.available()) {
+char command = SerialBT.read();
+if (command == '\n') {
+// End of command received, process it
+processCommand(receivedCommand);
+// Reset for the next command
+receivedCommand = "";
+} else {
+// Append to the command
+receivedCommand += command;
+lastCommandTime = millis();
+}
+}
 
-  // Check for a complete command with a timeout
-  if (millis() - lastCommandTime > commandTimeout && !receivedCommand.isEmpty()) {
-    processCommand(receivedCommand);
-    // Reset for the next command
-    receivedCommand = "";
-  }
+// Check for a complete command with a timeout
+if (millis() - lastCommandTime > commandTimeout && !receivedCommand.isEmpty()) {
+processCommand(receivedCommand);
+// Reset for the next command
+receivedCommand = "";
+}
 
-  // Additional logic as needed
+// Additional logic as needed
 
-  delay(20);  // Allow time for Bluetooth communication
+delay(20); // Allow time for Bluetooth communication
 }
 
 void processCommand(String command) {
-  command.trim();  // Remove leading and trailing whitespace
-  Serial.print("Received command: ");
-  Serial.println(command);
+command.trim(); // Remove leading and trailing whitespace
+Serial.print("Received command: ");
+Serial.println(command);
 
-  if (command == "1") {
-    digitalWrite(relayPin, HIGH);  // Turn off the relay
-    isRelayOn = false;
-    Serial.println("Relay turned on");
-  } else if (command == "0") {
-    digitalWrite(relayPin, LOW);  // Turn on the relay
-    isRelayOn = true;
-    Serial.println("Relay turned off");
-  }
+if (command == "1") {
+digitalWrite(relayPin, HIGH); // Turn off the relay
+isRelayOn = false;
+Serial.println("Relay turned on");
+} else if (command == "0") {
+digitalWrite(relayPin, LOW); // Turn on the relay
+isRelayOn = true;
+Serial.println("Relay turned off");
+}
 
 }
+
 </pre>
 </details>
 
-Now that we could control the beeper it was time to implicate this to the previously made code.  
+Now that we could control the beeper it was time to implicate this to the previously made code.
+
 <details>
 <summary>Code</summary>
 <pre>
@@ -1653,135 +1786,135 @@ String device_name = "ESP32-BT-Slave";
 
 BluetoothSerial SerialBT;
 String incoming; // Bluetooth command
-double sekunti;   // For getting time
+double sekunti; // For getting time
 
 void processCommand(String command);
 
 void setup(void) {
-  Serial.begin(115200);
-  while (!Serial)
-    delay(10); // will pause Zero, Leonardo, etc until serial console opens
+Serial.begin(115200);
+while (!Serial)
+delay(10); // will pause Zero, Leonardo, etc until serial console opens
 
-  pinMode(relayPin, OUTPUT);
-  digitalWrite(relayPin, LOW); // Turn off the relay initially
-  isRelayOn = false;           // Update the initial state variable
+pinMode(relayPin, OUTPUT);
+digitalWrite(relayPin, LOW); // Turn off the relay initially
+isRelayOn = false; // Update the initial state variable
 
-  SerialBT.begin(device_name);
-  Serial.println("Bluetooth Device is Ready to Pair");
-  Serial.println("Adafruit MPU6050 test!");
+SerialBT.begin(device_name);
+Serial.println("Bluetooth Device is Ready to Pair");
+Serial.println("Adafruit MPU6050 test!");
 
-  // Try to initialize!
-  if (!mpu.begin()) {
-    Serial.println("Failed to find MPU6050 chip");
-    while (1) {
-      delay(10);
-    }
-  }
-  Serial.println("MPU6050 Found!");
+// Try to initialize!
+if (!mpu.begin()) {
+Serial.println("Failed to find MPU6050 chip");
+while (1) {
+delay(10);
+}
+}
+Serial.println("MPU6050 Found!");
 
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  Serial.print("Accelerometer range set to: ");
-  switch (mpu.getAccelerometerRange()) {
-  case MPU6050_RANGE_2_G:
-    Serial.println("+-2G");
-    break;
-  case MPU6050_RANGE_4_G:
-    Serial.println("+-4G");
-    break;
-  case MPU6050_RANGE_8_G:
-    Serial.println("+-8G");
-    break;
-  case MPU6050_RANGE_16_G:
-    Serial.println("+-16G");
-    break;
-  }
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  Serial.print("Gyro range set to: ");
-  switch (mpu.getGyroRange()) {
-  case MPU6050_RANGE_250_DEG:
-    Serial.println("+- 250 deg/s");
-    break;
-  case MPU6050_RANGE_500_DEG:
-    Serial.println("+- 500 deg/s");
-    break;
-  case MPU6050_RANGE_1000_DEG:
-    Serial.println("+- 1000 deg/s");
-    break;
-  case MPU6050_RANGE_2000_DEG:
-    Serial.println("+- 2000 deg/s");
-    break;
-  }
+mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+Serial.print("Accelerometer range set to: ");
+switch (mpu.getAccelerometerRange()) {
+case MPU6050_RANGE_2_G:
+Serial.println("+-2G");
+break;
+case MPU6050_RANGE_4_G:
+Serial.println("+-4G");
+break;
+case MPU6050_RANGE_8_G:
+Serial.println("+-8G");
+break;
+case MPU6050_RANGE_16_G:
+Serial.println("+-16G");
+break;
+}
+mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+Serial.print("Gyro range set to: ");
+switch (mpu.getGyroRange()) {
+case MPU6050_RANGE_250_DEG:
+Serial.println("+- 250 deg/s");
+break;
+case MPU6050_RANGE_500_DEG:
+Serial.println("+- 500 deg/s");
+break;
+case MPU6050_RANGE_1000_DEG:
+Serial.println("+- 1000 deg/s");
+break;
+case MPU6050_RANGE_2000_DEG:
+Serial.println("+- 2000 deg/s");
+break;
+}
 
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-  Serial.print("Filter bandwidth set to: ");
-  switch (mpu.getFilterBandwidth()) {
-  case MPU6050_BAND_260_HZ:
-    Serial.println("260 Hz");
-    break;
-  case MPU6050_BAND_184_HZ:
-    Serial.println("184 Hz");
-    break;
-  case MPU6050_BAND_94_HZ:
-    Serial.println("94 Hz");
-    break;
-  case MPU6050_BAND_44_HZ:
-    Serial.println("44 Hz");
-    break;
-  case MPU6050_BAND_21_HZ:
-    Serial.println("21 Hz");
-    break;
-  case MPU6050_BAND_10_HZ:
-    Serial.println("10 Hz");
-    break;
-  case MPU6050_BAND_5_HZ:
-    Serial.println("5 Hz");
-    break;
-  }
+mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+Serial.print("Filter bandwidth set to: ");
+switch (mpu.getFilterBandwidth()) {
+case MPU6050_BAND_260_HZ:
+Serial.println("260 Hz");
+break;
+case MPU6050_BAND_184_HZ:
+Serial.println("184 Hz");
+break;
+case MPU6050_BAND_94_HZ:
+Serial.println("94 Hz");
+break;
+case MPU6050_BAND_44_HZ:
+Serial.println("44 Hz");
+break;
+case MPU6050_BAND_21_HZ:
+Serial.println("21 Hz");
+break;
+case MPU6050_BAND_10_HZ:
+Serial.println("10 Hz");
+break;
+case MPU6050_BAND_5_HZ:
+Serial.println("5 Hz");
+break;
+}
 
-  Serial.println("");
-  delay(100);
+Serial.println("");
+delay(100);
 }
 
 void loop() {
-  static String receivedCommand = "";
-  static unsigned long lastCommandTime = 0;
-  const unsigned long commandTimeout = 100; // Adjust as needed
+static String receivedCommand = "";
+static unsigned long lastCommandTime = 0;
+const unsigned long commandTimeout = 100; // Adjust as needed
 
-  while (SerialBT.available()) { // Check if we receive anything from Bluetooth
-    char command = SerialBT.read();
-    if (command == '\n') {
-      // End of command received, process it
-      processCommand(receivedCommand);
-      // Reset for the next command
-      receivedCommand = "";
-    } else {
-      // Append to the command
-      receivedCommand += command;
-      lastCommandTime = millis();
-    }
-  }
+while (SerialBT.available()) { // Check if we receive anything from Bluetooth
+char command = SerialBT.read();
+if (command == '\n') {
+// End of command received, process it
+processCommand(receivedCommand);
+// Reset for the next command
+receivedCommand = "";
+} else {
+// Append to the command
+receivedCommand += command;
+lastCommandTime = millis();
+}
+}
 
-  // Check for command timeout
-  if (millis() - lastCommandTime > commandTimeout) {
-    receivedCommand = ""; // Clear the command if timeout occurs
-  }
+// Check for command timeout
+if (millis() - lastCommandTime > commandTimeout) {
+receivedCommand = ""; // Clear the command if timeout occurs
+}
 }
 
 void processCommand(String command) {
-  command.trim(); // Remove leading and trailing whitespace
-  Serial.print("Received command: ");
-  Serial.println(command);
+command.trim(); // Remove leading and trailing whitespace
+Serial.print("Received command: ");
+Serial.println(command);
 
-  if (command == "1") {
-    digitalWrite(relayPin, HIGH); // Turn off the relay
-    isRelayOn = false;
-    Serial.println("Relay turned on");
-  } else if (command == "0") {
-    digitalWrite(relayPin, LOW); // Turn on the relay
-    isRelayOn = true;
-    Serial.println("Relay turned off");
-  } 
-  while (command == "start") {
+if (command == "1") {
+digitalWrite(relayPin, HIGH); // Turn off the relay
+isRelayOn = false;
+Serial.println("Relay turned on");
+} else if (command == "0") {
+digitalWrite(relayPin, LOW); // Turn on the relay
+isRelayOn = true;
+Serial.println("Relay turned off");
+}
+while (command == "start") {
 
     // Get new sensor events with the readings //
     sensors_event_t a, g, temp;
@@ -1818,15 +1951,19 @@ void processCommand(String command) {
       command = "stop";
       sekunti = 0;
     }
-  }
+
 }
+}
+
 </pre>
 </details>
   
 [![Video](https://www.youtube.com/watch?v=DhF-aahLY1A.png)](https://www.youtube.com/embed/DhF-aahLY1A?si=TZd3BNBJhZPttrgc)
 
 # Saving readings
+
 Now we tried to save the reading in to the ESP32 so we can see them with a command. So we needed to add following thing in to the code:
+
 ```bash
 #include "SPIFFS.h"
 
@@ -1835,7 +1972,7 @@ void setup(){
 	    Serial.println("Failed to mount file system");
 	    return;
 	  }
-	
+
 	  dataFile = SPIFFS.open("/sensor_data.txt", "a"); // Open the file for appending
 	  if (!dataFile) {
 	    Serial.println("Failed to open file for writing");
@@ -1864,7 +2001,8 @@ void saveDataToFile(float accelX, float accelY, float accelZ, float gyroX, float
 }
 ```
 
-We also needed to edit the exiting code. We needed to edit the code handeling the incoming command so we could get rid of `while loop`. This helps us to add new thing to the code more easily. 
+We also needed to edit the exiting code. We needed to edit the code handeling the incoming command so we could get rid of `while loop`. This helps us to add new thing to the code more easily.
+
 <details>
 <summary>Code</summary>
 <pre>
@@ -1882,7 +2020,7 @@ String device_name = "ESP32-BT-Slave";
 
 BluetoothSerial SerialBT;
 String incoming; // Bluetooth command
-double sekunti;   // For getting time
+double sekunti; // For getting time
 
 File dataFile;
 
@@ -1890,68 +2028,68 @@ void processCommand(String command);
 void saveDataToFile(float accelX, float accelY, float accelZ, float gyroX, float gyroY, float gyroZ);
 
 void setup(void) {
-  Serial.begin(115200);
-  while (!Serial)
-    delay(10);
+Serial.begin(115200);
+while (!Serial)
+delay(10);
 
-  pinMode(relayPin, OUTPUT);
-  digitalWrite(relayPin, LOW);
-  isRelayOn = false;
+pinMode(relayPin, OUTPUT);
+digitalWrite(relayPin, LOW);
+isRelayOn = false;
 
-  SerialBT.begin(device_name);
-  Serial.println("Bluetooth Device is Ready to Pair");
-  Serial.println("Adafruit MPU6050 test!");
+SerialBT.begin(device_name);
+Serial.println("Bluetooth Device is Ready to Pair");
+Serial.println("Adafruit MPU6050 test!");
 
-  if (!mpu.begin()) {
-    Serial.println("Failed to find MPU6050 chip");
-    while (1) {
-      delay(10);
-    }
-  }
-  Serial.println("MPU6050 Found!");
+if (!mpu.begin()) {
+Serial.println("Failed to find MPU6050 chip");
+while (1) {
+delay(10);
+}
+}
+Serial.println("MPU6050 Found!");
 
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 
-  if (!SPIFFS.begin()) {
-    Serial.println("Failed to mount file system");
-    return;
-  }
+if (!SPIFFS.begin()) {
+Serial.println("Failed to mount file system");
+return;
+}
 
-  dataFile = SPIFFS.open("/sensor_data.txt", "a"); // Open the file for appending
-  if (!dataFile) {
-    Serial.println("Failed to open file for writing");
-    return;
-  }
+dataFile = SPIFFS.open("/sensor_data.txt", "a"); // Open the file for appending
+if (!dataFile) {
+Serial.println("Failed to open file for writing");
+return;
+}
 
-  delay(100);
+delay(100);
 }
 
 void loop() {
-  static String receivedCommand = "";
-  static unsigned long lastCommandTime = 0;
-  const unsigned long commandTimeout = 100; // Adjust as needed
+static String receivedCommand = "";
+static unsigned long lastCommandTime = 0;
+const unsigned long commandTimeout = 100; // Adjust as needed
 
-  while (SerialBT.available()) {
-    char command = SerialBT.read();
-    if (command == '\n') {
-      processCommand(receivedCommand);
-      receivedCommand = "";
-    } else {
-      receivedCommand += command;
-      lastCommandTime = millis();
-    }
-  }
+while (SerialBT.available()) {
+char command = SerialBT.read();
+if (command == '\n') {
+processCommand(receivedCommand);
+receivedCommand = "";
+} else {
+receivedCommand += command;
+lastCommandTime = millis();
+}
+}
 
-  if (millis() - lastCommandTime > commandTimeout) {
-    receivedCommand = "";
-  }
+if (millis() - lastCommandTime > commandTimeout) {
+receivedCommand = "";
+}
 
-  if (incoming == "start") {
-    // Get new sensor events with the readings //
-    sensors_event_t a, g, temp;
-    mpu.getEvent(&a, &g, &temp);
+if (incoming == "start") {
+// Get new sensor events with the readings //
+sensors_event_t a, g, temp;
+mpu.getEvent(&a, &g, &temp);
 
     // Print out the values //
     Serial.print("Acceleration X: ");
@@ -1988,43 +2126,45 @@ void loop() {
       incoming = "stop";
       sekunti = 0;
     }
-  }
+
+}
 }
 
 void processCommand(String command) {
-  command.trim(); // Remove leading and trailing whitespace
-  Serial.print("Received command: ");
-  Serial.println(command);
+command.trim(); // Remove leading and trailing whitespace
+Serial.print("Received command: ");
+Serial.println(command);
 
-  if (command == "1") {
-    digitalWrite(relayPin, HIGH); // Turn off the relay
-    isRelayOn = false;
-    Serial.println("Relay turned on");
-  } else if (command == "0") {
-    digitalWrite(relayPin, LOW); // Turn on the relay
-    isRelayOn = true;
-    Serial.println("Relay turned off");
-  } else if (command == "start") {
-    incoming = "start";
-  }
+if (command == "1") {
+digitalWrite(relayPin, HIGH); // Turn off the relay
+isRelayOn = false;
+Serial.println("Relay turned on");
+} else if (command == "0") {
+digitalWrite(relayPin, LOW); // Turn on the relay
+isRelayOn = true;
+Serial.println("Relay turned off");
+} else if (command == "start") {
+incoming = "start";
+}
 }
 
 void saveDataToFile(float accelX, float accelY, float accelZ, float gyroX, float gyroY, float gyroZ) {
-  // Save sensor data to file
-  dataFile.print("Acceleration X: ");
-  dataFile.print(accelX);
-  dataFile.print(", Y: ");
-  dataFile.print(accelY);
-  dataFile.print(", Z: ");
-  dataFile.print(accelZ);
-  dataFile.print(", Rotation X: ");
-  dataFile.print(gyroX);
-  dataFile.print(", Y: ");
-  dataFile.print(gyroY);
-  dataFile.print(", Z: ");
-  dataFile.print(gyroZ);
-  dataFile.println();
+// Save sensor data to file
+dataFile.print("Acceleration X: ");
+dataFile.print(accelX);
+dataFile.print(", Y: ");
+dataFile.print(accelY);
+dataFile.print(", Z: ");
+dataFile.print(accelZ);
+dataFile.print(", Rotation X: ");
+dataFile.print(gyroX);
+dataFile.print(", Y: ");
+dataFile.print(gyroY);
+dataFile.print(", Z: ");
+dataFile.print(gyroZ);
+dataFile.println();
 }
+
 </pre>
 </details>
   
@@ -2039,19 +2179,21 @@ void loop(){
 }
 
 void processCommand(String command) {
-	// Existing code...
-	} else if (command == "show")
-		incoming = "show";
-}	
-```
+// Existing code...
+} else if (command == "show")
+incoming = "show";
+}
+
+````
 
 After this when trying if this works we got an error with mounting the file system.
 ```bash
 E (813) SPIFFS: mount failed, -10025
 Failed to mount file system
-```
+````
 
 With googling we didn't get any clear awnser why this was happening so we ended up asking [chatgpt](https://chat.openai.com/) what might cause this error. With the awnsers we got we ended up trying to format the filesystem. For this we used [this](https://techtutorialsx.com/2019/02/24/esp32-arduino-formatting-the-spiffs-file-system/) site and ended up with the following code.
+
 ```bash
 #include "FS.h"
 
@@ -2069,4 +2211,3 @@ void setup() {
 ```
 
 After uploading this to ESP32 and reuploading the previous code, the file system was succesfully mounted.
-
