@@ -1823,7 +1823,7 @@ void processCommand(String command) {
 </pre>
 </details>
   
-<iframe width="560" height="315" src="https://www.youtube.com/embed/DhF-aahLY1A?si=TZd3BNBJhZPttrgc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+https://www.youtube.com/embed/DhF-aahLY1A?si=TZd3BNBJhZPttrgc
 
 # Saving readings
 Now we tried to save the reading in to the ESP32 so we can see them with a command. So we needed to add following thing in to the code:
