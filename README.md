@@ -1822,6 +1822,12 @@ void processCommand(String command) {
 }
 </pre>
 </details>
+  
+    <iframe width="560" height="315"
+src="https://www.youtube.com/watch?v=DhF-aahLY1A" 
+frameborder="0" 
+allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" 
+allowfullscreen></iframe>
 
 # Saving readings
 Now we tried to save the reading in to the ESP32 so we can see them with a command. So we needed to add following thing in to the code:
@@ -2039,6 +2045,7 @@ void loop(){
 void processCommand(String command) {
 	// Existing code...
 	} else if (command == "show")
+		incoming = "show";
 }	
 ```
 
