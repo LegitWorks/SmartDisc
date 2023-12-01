@@ -1959,7 +1959,8 @@ while (command == "start") {
 </pre>
 </details>
   
-[![Video](https://www.youtube.com/watch?v=DhF-aahLY1A.png)](https://www.youtube.com/embed/DhF-aahLY1A?si=TZd3BNBJhZPttrgc)
+[![Video](https://img.youtube.com/vi/DhF-aahLY1A/0.jpg)](https://www.youtube.com/watch?v=DhF-aahLY1A)
+
 
 # Saving readings
 
