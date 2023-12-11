@@ -885,7 +885,7 @@ void loop() {
 </details>
 
 We realized that our caliibration only affected the X axis and that we needed to make a calibration that takes in account the dispersion of the gravitational acceleration on all axes.
-For this we needed to implement a high-pass filter. We first implemented it on the basic readings example from before, beacuse we figured it would be quick to implement and reliable.
+For this we needed to implement a ![high-pass](https://www.macnica.co.jp/en/business/semiconductor/articles/analog_devices/140264/#:~:text=There%20is%20a%20high%2Dpass,and%20resistor%20before%20AD%20conversion) filter. We first implemented it on the basic readings example from before, beacuse we figured it would be quick to implement and reliable.
 
 <details>
 <summary>Code</summary>
