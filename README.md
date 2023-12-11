@@ -2443,9 +2443,9 @@ There still is one preblem that we didn't find solution for and that is that the
 <details>
 <summary>Final Code</summary>
 <pre>
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
-#include <Wire.h>
+#include "Adafruit_MPU6050.h"
+#include "Adafruit_Sensor.h"
+#include "Wire.h"
 #include "BluetoothSerial.h"
 #include "SPIFFS.h"
 
