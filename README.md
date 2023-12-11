@@ -2354,6 +2354,91 @@ String getTiltStrength(float gyroX, float gyroZ) {
 ```
 
 # Finalizing
+After putting all the code together there was problem with `show` command and it didn't find any saved data. 
+```bash
+void saveDataToFile(double rpmY, double topSpeedKmH, bool tiltDuringTopSpeed) {
+    // Save sensor data to file
+    dataFile.print("RPM Y: ");
+    dataFile.print(rpmY);
+    dataFile.print(", Top Speed: ");
+    dataFile.print(topSpeedKmH);  // Keep this label consistent
+    dataFile.print(", Tilted: ");
+    dataFile.print(tiltDuringTopSpeed ? "Yes" : "No");
+    dataFile.println();
+}
+
+
+void showSavedData() {
+    // Open the file in read mode
+    File file = SPIFFS.open("/sensor_data.txt", "r");
+    if (!file) {
+        Serial.println("Failed to open file for reading");
+        return;
+    }
+
+    Serial.println("Saved Sensor Data:");
+
+    double maxTopSpeed = 0.0;
+    String maxTopSpeedRow;
+
+    // Read the content of the file line by line
+    while (file.available()) {
+        String line = file.readStringUntil('\n');
+
+        // Check if the line contains the relevant data
+        if (line.indexOf("Top Speed") != -1) {
+            // Extract the top speed value from the line
+            int colonIndex = line.indexOf(":");
+            double currentTopSpeed = line.substring(colonIndex + 1).toDouble();
+
+            // Update the maximum top speed and corresponding row
+            if (currentTopSpeed > maxTopSpeed) {
+                maxTopSpeed = currentTopSpeed;
+                maxTopSpeedRow = line;
+            }
+        }
+    }
+```
+We knew one of these was the problem so we started to debug these one at the time.  First we looked into `showSavedData` and added lines to help debug.
+```bash
+/ Debugging statement
+Serial.println("Read line: " + line);
+```
+
+But with this we didnt get any errors, only that there were no data. So with that in mind next we looked into `saveDataToFile`. First we added line to see if data were saved.
+```bash
+Serial.println("Data saved.");
+```
+This didn't give us any errors and printed `Data saved.`. This was where we were getting lost since everything seemed like it was working correctly but we didn't get correct results and we still weren't really familiar with C++. So we asked [ChatGBT](https://chat.openai.com/) help debugging.  
+With the help of ChatGBT we started debugging further and put changed `saveDataToFile` to the following
+```bash
+void saveDataToFile(double rpmY, double topSpeedKmH, bool tiltDuringTopSpeed) {
+    // Check if the file is open
+    if (dataFile) {
+        // Save sensor data to file
+        dataFile.print("RPM Y: ");
+        dataFile.print(rpmY);
+        dataFile.print(", Top Speed: ");
+        dataFile.print(topSpeedKmH);
+        dataFile.print(", Tilted: ");
+        dataFile.print(tiltDuringTopSpeed ? "Yes" : "No");
+        dataFile.println();
+
+        // Debugging statement
+        Serial.println("Data saved to file.");
+    } else {
+        // Debugging statement
+        Serial.println("Error: File not open!");
+    }
+}
+``` 
+With this we were making sure the file was open for writing when saving data. This still didn't fix the problem so next we opened the file for writing by adding the following line in the beginning of the `saveDataToFile`
+```bash
+File dataFile = SPIFFS.open("/sensor_data.txt", "a");
+```
+With this the data was saved correctly and commands in the code worked as intended.
+  
+There still is one preblem that we didn't find solution for and that is that the Accelemoter/Gyro sometimes just stops working and only gives values of 0.
 
 <details>
 <summary>Final Code</summary>
