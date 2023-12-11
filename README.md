@@ -2352,3 +2352,292 @@ String getTiltStrength(float gyroX, float gyroZ) {
     }
 }
 ```
+
+# Finalizing
+
+<details>
+<summary>Final Code</summary>
+<pre>
+#include "Adafruit_MPU6050.h"
+#include "Adafruit_Sensor.h"
+#include "Wire.h"
+#include "BluetoothSerial.h"
+#include "SPIFFS.h"
+
+const int relayPin = 16;
+bool isRelayOn = false;
+
+Adafruit_MPU6050 mpu;
+String device_name = "ESP32-BT-Slave";
+
+BluetoothSerial SerialBT;
+String incoming; // Bluetooth command
+double sekunti;   // For getting time
+
+File dataFile;
+
+void processCommand(String command);
+void saveDataToFile(double rpmY, double topSpeedKmH, String tiltStrength);
+void clearFileSystem(); // Declaration
+
+void setup(void) {
+  Serial.begin(115200);
+  while (!Serial)
+    delay(10);
+
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, LOW);
+  isRelayOn = false;
+
+  SerialBT.begin(device_name);
+  Serial.println("Bluetooth Device is Ready to Pair");
+  Serial.println("Adafruit MPU6050 test!");
+
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  Serial.println("MPU6050 Found!");
+
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+  if (!SPIFFS.begin()) {
+    Serial.println("Failed to mount file system");
+    return;
+  }
+
+  dataFile = SPIFFS.open("/sensor_data.txt", "a"); // Open the file for appending
+  if (!dataFile) {
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+
+  delay(100);
+}
+
+void loop() {
+  static String receivedCommand = "";
+  static unsigned long lastCommandTime = 0;
+  const unsigned long commandTimeout = 100; // Adjust as needed
+  String tiltStrength = "";
+  double accelerationX = 0;
+  double accelerationY = 0;
+  double accelerationZ = 0;
+
+  while (SerialBT.available()) {
+    char command = SerialBT.read();
+    if (command == '\n') {
+      processCommand(receivedCommand);
+      receivedCommand = "";
+    } else {
+      receivedCommand += command;
+      lastCommandTime = millis();
+    }
+  }
+
+  if (millis() - lastCommandTime > commandTimeout) {
+    receivedCommand = "";
+  }
+
+  if (incoming == "start") {
+    // Get new sensor events with the readings //
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+    accelerationX = a.acceleration.x - 1;
+    accelerationY = a.acceleration.y;
+    accelerationZ = a.acceleration.z - 11;
+
+    // Print out the raw values for debugging
+    Serial.print("Raw Acceleration X: ");
+    Serial.print(accelerationX);
+    Serial.print(", Y: ");
+    Serial.print(accelerationY);
+    Serial.print(", Z: ");
+    Serial.print(accelerationZ);
+    Serial.print(", True: ");
+    double sroot = sqrt(pow(accelerationX, 2) + pow(accelerationY, 2) + pow(accelerationZ, 2));
+    Serial.print(sroot);
+    Serial.println(" m/s^2");
+
+    // Print out the raw gyro values for debugging
+    Serial.print("Raw Rotation X: ");
+    Serial.print(g.gyro.x);
+    Serial.print(", Y: ");
+    Serial.print(g.gyro.y);
+    Serial.print(", Z: ");
+    Serial.print(g.gyro.z);
+    Serial.println(" rad/s");
+
+    // Calculate top speed in km/h
+    double topSpeedKmH = calculateTopSpeed(sroot);
+    Serial.print(", Top Speed: ");
+    Serial.print(topSpeedKmH);
+    Serial.println(" km/h");
+
+    sekunti = sekunti + 0.5;
+    // Check for tilt during top speed recording and get tilt strength
+    tiltStrength = getTiltStrength(g.gyro.x, g.gyro.z);
+    // Calculate RPM from gyroY (angular velocity around Y-axis)
+    double rpmY = calculateRPM(g.gyro.y);
+
+    // Save data to file
+    saveDataToFile(rpmY, topSpeedKmH, tiltStrength);
+
+    Serial.println("");
+    delay(500);
+
+    if (sroot < 0.5 && sekunti >= 5) {
+      incoming = "stop";
+      sekunti = 0;
+    }
+  } else if (incoming == "show") {
+    showSavedData();
+    incoming = "";
+  } else if (incoming == "clear") {
+    clearFileSystem();
+    incoming = "";
+  }
+}
+
+void processCommand(String command) {
+  command.trim(); // Remove leading and trailing whitespace
+  Serial.print("Received command: ");
+  Serial.println(command);
+
+  if (command == "1") {
+    digitalWrite(relayPin, HIGH); // Turn off the relay
+    isRelayOn = false;
+    Serial.println("Relay turned on");
+  } else if (command == "0") {
+    digitalWrite(relayPin, LOW); // Turn on the relay
+    isRelayOn = true;
+    Serial.println("Relay turned off");
+  } else if (command == "start") {
+    incoming = "start";
+  } else if (command == "show") {
+    incoming = "show";
+  } else if (command == "clear") {
+    incoming = "clear";
+  }
+}
+
+void saveDataToFile(double rpmY, double topSpeedKmH, String tiltStrength) {
+  // Save sensor data to file
+  dataFile.print("RPM Y: ");
+  dataFile.print(rpmY);
+  dataFile.print(", Top Speed: ");
+  dataFile.print(topSpeedKmH);
+  dataFile.print(", Tilt: ");
+  dataFile.print(tiltStrength);
+  dataFile.println();
+}
+
+double calculateRPM(float angularVelocity) {
+  // Convert angular velocity from rad/s to RPM
+  double rpm = angularVelocity * 60 / (2 * M_PI);
+  return rpm;
+}
+
+void showSavedData() {
+  // Open the file in read mode
+  File file = SPIFFS.open("/sensor_data.txt", "r");
+  if (!file) {
+    SerialBT.println("Failed to open file for reading");
+    return;
+  }
+
+  Serial.println("Saved Sensor Data:");
+
+  double maxTopSpeed = 0.0;
+  String maxTopSpeedRow;
+
+  // Read the content of the file line by line
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+
+    // Debugging statement
+    // Serial.println("Read line: " + line);
+
+    // Check if the line contains the relevant data
+    if (line.indexOf("Top Speed") != -1) {
+      // Extract the top speed value from the line
+      int colonIndex = line.indexOf(":");
+      double currentTopSpeed = line.substring(colonIndex + 1).toFloat();
+
+      // Update the maximum top speed and corresponding row
+      if (currentTopSpeed > maxTopSpeed) {
+        maxTopSpeed = currentTopSpeed;
+        maxTopSpeedRow = line;
+      }
+    }
+  }
+
+  // Display only the row with the highest top speed
+  if (!maxTopSpeedRow.isEmpty()) {
+    SerialBT.println("Highest Top Speed Data:");
+    SerialBT.println(maxTopSpeedRow);
+  } else {
+    SerialBT.println("No data available.");
+  }
+
+  // Close the file
+  file.close();
+  Serial.println("End of Sensor Data");
+}
+
+double calculateTopSpeed(double acceleration) {
+  // Convert acceleration from m/s^2 to km/h
+  double topSpeedKmH = acceleration * 3600 / 1000;
+  return topSpeedKmH;
+}
+
+String getTiltStrength(float gyroX, float gyroZ) {
+  // Set your threshold for tilt detection
+  float mildTiltThreshold = 0.1;
+  float strongTiltThreshold = 0.5;
+
+  // Check if the absolute values of gyroX and gyroZ are greater than the threshold
+  float absGyroX = fabs(gyroX);
+  float absGyroZ = fabs(gyroZ);
+
+  if (absGyroX > strongTiltThreshold || absGyroZ > strongTiltThreshold) {
+    return "Strong Tilt";
+  } else if (absGyroX > mildTiltThreshold || absGyroZ > mildTiltThreshold) {
+    return "Mild Tilt";
+  } else {
+    return "No Tilt";
+  }
+}
+
+void clearFileSystem() {
+  SerialBT.println("Clearing file system...");
+
+  // Close the file before formatting
+  dataFile.close();
+  SerialBT.println("File closed before formatting.");
+
+  // Format the file system
+  if (SPIFFS.format()) {
+    SerialBT.println("File system cleared.");
+
+    // Reopen the file for writing after clearing the file system
+    dataFile = SPIFFS.open("/sensor_data.txt", "w");
+    if (dataFile) {
+      SerialBT.println("File reopened for writing.");
+    } else {
+      SerialBT.println("Failed to open file for writing.");
+    }
+  } else {
+    SerialBT.println("Failed to format file system.");
+  }
+}
+
+</pre>
+</details>
+
+
+[![Video](https://img.youtube.com/vi/qxW6jK7o5P0/0.jpg)](https://www.youtube.com/watch?v=qxW6jK7o5P0)
