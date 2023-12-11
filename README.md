@@ -2409,8 +2409,8 @@ But with this we didnt get any errors, only that there were no data. So with tha
 ```bash
 Serial.println("Data saved.");
 ```
-This didn't give us any errors and printed `Data saved.`. This was where we were getting lost since everything seemed like it was working correctly but we didn't get correct results and we still weren't really familiar with C++. So we asked [ChatGBT](https://chat.openai.com/) help debugging.  
-With the help of ChatGBT we started debugging further and put changed `saveDataToFile` to the following
+This didn't give us any errors and printed `Data saved.`. This was where we were getting lost since everything seemed like it was working correctly but we didn't get correct results and we still weren't really familiar with C++. So we asked [ChatGPT](https://chat.openai.com/) help debugging.  
+With the help of ChatGPT we started debugging further and put changed `saveDataToFile` to the following
 ```bash
 void saveDataToFile(double rpmY, double topSpeedKmH, bool tiltDuringTopSpeed) {
     // Check if the file is open
