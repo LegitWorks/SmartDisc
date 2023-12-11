@@ -2213,3 +2213,142 @@ void setup() {
 ```
 
 After uploading this to ESP32 and reuploading the previous code, the file system was succesfully mounted.
+
+# Top Speed
+To get the top speed we needed to calculate it from m/s^2. For the formula we used [this](https://www.engineeringtoolbox.com/acceleration-d_1393.html) website and get the following clause.
+```bash
+double topSpeedKmH = acceleration * 3600 / 1000;
+```
+
+Next we needed to integrate it to the code.
+```bash
+void loop() {
+	// Existing code...
+
+	if (incoming == "start") {
+		// Existing code...
+
+		// Calculate top speed in km/h
+		double topSpeedKmH = calculateTopSpeed(sroot);
+		Serial.print(", Top Speed: ");
+		Serial.print(topSpeedKmH);
+		Serial.println(" km/h");
+	// Existing code...
+
+double calculateTopSpeed(double acceleration) {
+  // Convert acceleration from m/s^2 to km/h
+  double topSpeedKmH = acceleration * 3600 / 1000;
+  return topSpeedKmH;
+}
+```
+
+# Rounds per minute
+To add and calculate RPM we used following [website](https://www.engineeringtoolbox.com/acceleration-d_1393.html).
+
+```bash
+void loop() {
+	// Existing code...
+
+	if (incoming == "start") {
+		// Existing code...
+
+		// Calculate RPM from gyroY (angular velocity around Y-axis)
+        double rpmY = calculateRPM(g.gyro.y);
+	// Existing code..
+	
+double calculateRPM(float angularVelocity) {
+    // Convert angular velocity from rad/s to RPM
+    double rpm = angularVelocity * 60 / (2 * M_PI);
+    return rpm;
+}
+```
+
+
+
+# Tilt detection
+We wanted to put tilt detection when the disk leaves hand. We did this with gyro x and z axes. 
+
+```bash
+void loop() {
+	bool tiltDuringTopSpeed = false;  // Variable to track tilt during top speed recording
+
+	// Existing code...
+
+	if (incoming == "start") {
+
+		// Existing code...
+
+		if (isTilted(g.gyro.x, g.gyro.z)) {
+			tiltDuringTopSpeed = true;
+		} 
+
+		// Existing code...
+
+bool isTilted(float gyroX, float gyroZ) {
+  // Set your threshold for tilt detection
+  float tiltThreshold = 0.1;
+
+  // Check if the absolute values of gyroX and gyroZ are greater than the threshold
+  return (fabs(gyroX) > tiltThreshold || fabs(gyroZ) > tiltThreshold);
+}
+```
+
+Then we wanted to spesify if the tilt is mild or strong. So we changed the code to the following.
+```bash
+void loop(){
+	String tiltStrength = ""; 
+
+	// Existing code...
+
+	if (incoming == "start") {
+
+		// Existing code...
+
+		// Check for tilt during top speed recording and get tilt strength
+		tiltStrength = getTiltStrength(g.gyro.x, g.gyro.z);
+
+	// Existing code...
+}
+
+void saveDataToFile(double rpmY, double topSpeedKmH, String tiltStrength) {
+    // Open the file for writing
+    File dataFile = SPIFFS.open("/sensor_data.txt", "a");
+
+    if (dataFile) {
+        // Save sensor data to file
+        dataFile.print("RPM Y: ");
+    dataFile.print(rpmY);
+    dataFile.print(", Top Speed: ");
+    dataFile.print(topSpeedKmH);
+    dataFile.print(", Tilt: ");
+    dataFile.print(tiltStrength);
+    dataFile.println();
+
+        Serial.println("Saving data to file... Data saved successfully.");
+
+        // Close the file
+        dataFile.close();
+    } else {
+        // Debugging statement
+        Serial.println("Error: Failed to open file for writing!");
+    }
+}
+
+String getTiltStrength(float gyroX, float gyroZ) {
+    // Set your threshold for tilt detection
+    float mildTiltThreshold = 0.1;
+    float strongTiltThreshold = 0.5;
+
+    // Check if the absolute values of gyroX and gyroZ are greater than the threshold
+    float absGyroX = fabs(gyroX);
+    float absGyroZ = fabs(gyroZ);
+
+    if (absGyroX > strongTiltThreshold || absGyroZ > strongTiltThreshold) {
+        return "Strong Tilt";
+    } else if (absGyroX > mildTiltThreshold || absGyroZ > mildTiltThreshold) {
+        return "Mild Tilt";
+    } else {
+        return "No Tilt";
+    }
+}
+```
