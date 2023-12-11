@@ -2443,27 +2443,33 @@ There still is one preblem that we didn't find solution for and that is that the
 <details>
 <summary>Final Code</summary>
 <pre>
-#include "Adafruit_MPU6050.h"
-#include "Adafruit_Sensor.h"
-#include "Wire.h"
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
 #include "BluetoothSerial.h"
 #include "SPIFFS.h"
+
+Adafruit_MPU6050 mpu;
+BluetoothSerial SerialBT;
+
+const float alpha = 0.8; // Adjust alpha based on the filter requirements
+
+float accelXFiltered = 0.0;
+float accelYFiltered = 0.0;
+float accelZFiltered = 0.0;
 
 const int relayPin = 16;
 bool isRelayOn = false;
 
-Adafruit_MPU6050 mpu;
-String device_name = "ESP32-BT-Slave";
+File dataFile;
 
-BluetoothSerial SerialBT;
+String device_name = "ESP32-BT-Slave";
 String incoming; // Bluetooth command
 double sekunti;   // For getting time
 
-File dataFile;
-
 void processCommand(String command);
 void saveDataToFile(double rpmY, double topSpeedKmH, String tiltStrength);
-void clearFileSystem(); // Declaration
+void clearFileSystem();
 
 void setup(void) {
   Serial.begin(115200);
@@ -2529,150 +2535,175 @@ void loop() {
   }
 
   if (incoming == "start") {
-    // Get new sensor events with the readings //
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
-    accelerationX = a.acceleration.x - 1;
-    accelerationY = a.acceleration.y;
-    accelerationZ = a.acceleration.z - 11;
 
-    // Print out the raw values for debugging
-    Serial.print("Raw Acceleration X: ");
+    // High-pass filter for accelerometer readings
+    accelXFiltered = alpha * accelXFiltered + (1.0 - alpha) * a.acceleration.x;
+    accelYFiltered = alpha * accelYFiltered + (1.0 - alpha) * a.acceleration.y;
+    accelZFiltered = alpha * accelZFiltered + (1.0 - alpha) * a.acceleration.z;
+
+    // Adjusted accelerometer readings
+    accelerationX = a.acceleration.x - accelXFiltered;
+    accelerationY = a.acceleration.y - accelYFiltered;
+    accelerationZ = a.acceleration.z - accelZFiltered;
+
+    // Rest of your code...
+    // Example: Print adjusted accelerometer values
+    Serial.print("Adjusted Acceleration X: ");
     Serial.print(accelerationX);
     Serial.print(", Y: ");
     Serial.print(accelerationY);
     Serial.print(", Z: ");
     Serial.print(accelerationZ);
-    Serial.print(", True: ");
+    Serial.println(" m/s^2");
+
     double sroot = sqrt(pow(accelerationX, 2) + pow(accelerationY, 2) + pow(accelerationZ, 2));
     Serial.print(sroot);
     Serial.println(" m/s^2");
 
-    // Print out the raw gyro values for debugging
-    Serial.print("Raw Rotation X: ");
-    Serial.print(g.gyro.x);
-    Serial.print(", Y: ");
-    Serial.print(g.gyro.y);
-    Serial.print(", Z: ");
-    Serial.print(g.gyro.z);
-    Serial.println(" rad/s");
-
-    // Calculate top speed in km/h
+// Calculate top speed in km/h
     double topSpeedKmH = calculateTopSpeed(sroot);
     Serial.print(", Top Speed: ");
     Serial.print(topSpeedKmH);
     Serial.println(" km/h");
 
-    sekunti = sekunti + 0.5;
-    // Check for tilt during top speed recording and get tilt strength
-    tiltStrength = getTiltStrength(g.gyro.x, g.gyro.z);
-    // Calculate RPM from gyroY (angular velocity around Y-axis)
-    double rpmY = calculateRPM(g.gyro.y);
+sekunti = sekunti + 0.5;
+  // Check for tilt during top speed recording and get tilt strength
+        tiltStrength = getTiltStrength(g.gyro.x, g.gyro.z);
+// Calculate RPM from gyroY (angular velocity around Y-axis)
+        double rpmY = calculateRPM(g.gyro.y);
 
-    // Save data to file
-    saveDataToFile(rpmY, topSpeedKmH, tiltStrength);
+        // Save data to file
+        saveDataToFile(rpmY, topSpeedKmH, tiltStrength);
 
-    Serial.println("");
-    delay(500);
+Serial.println("");
+delay(500);
 
-    if (sroot < 0.5 && sekunti >= 5) {
-      incoming = "stop";
-      sekunti = 0;
-    }
-  } else if (incoming == "show") {
-    showSavedData();
-    incoming = "";
-  } else if (incoming == "clear") {
+if (sroot < 1 && sekunti >= 5) {
+  incoming = "stop";
+  sekunti = 0;
+}
+}else if (incoming == "show") {
+	    showSavedData();
+	    incoming = "";
+	}else if (incoming == "clear"){
     clearFileSystem();
     incoming = "";
   }
 }
 
-void processCommand(String command) {
-  command.trim(); // Remove leading and trailing whitespace
-  Serial.print("Received command: ");
-  Serial.println(command);
 
-  if (command == "1") {
-    digitalWrite(relayPin, HIGH); // Turn off the relay
-    isRelayOn = false;
-    Serial.println("Relay turned on");
-  } else if (command == "0") {
-    digitalWrite(relayPin, LOW); // Turn on the relay
-    isRelayOn = true;
-    Serial.println("Relay turned off");
-  } else if (command == "start") {
-    incoming = "start";
-  } else if (command == "show") {
-    incoming = "show";
-  } else if (command == "clear") {
-    incoming = "clear";
-  }
+void processCommand(String command) {
+command.trim(); // Remove leading and trailing whitespace
+Serial.print("Received command: ");
+Serial.println(command);
+
+
+if (command == "1") {
+digitalWrite(relayPin, HIGH); // Turn off the relay
+isRelayOn = false;
+Serial.println("Relay turned on");
+} else if (command == "0") {
+digitalWrite(relayPin, LOW); // Turn on the relay
+isRelayOn = true;
+Serial.println("Relay turned off");
+} else if (command == "start") {
+incoming = "start";
+} else if (command == "show") {
+incoming = "show";
+} else if (command == "clear") {
+  incoming = "clear";
 }
+}
+
+
 
 void saveDataToFile(double rpmY, double topSpeedKmH, String tiltStrength) {
-  // Save sensor data to file
-  dataFile.print("RPM Y: ");
-  dataFile.print(rpmY);
-  dataFile.print(", Top Speed: ");
-  dataFile.print(topSpeedKmH);
-  dataFile.print(", Tilt: ");
-  dataFile.print(tiltStrength);
-  dataFile.println();
+    // Open the file for writing
+    File dataFile = SPIFFS.open("/sensor_data.txt", "a");
+
+    if (dataFile) {
+        // Save sensor data to file
+        dataFile.print("RPM Y: ");
+    dataFile.print(rpmY);
+    dataFile.print(", Top Speed km/h: ");
+    dataFile.print(topSpeedKmH);
+    dataFile.print(", Tilt: ");
+    dataFile.print(tiltStrength);
+    dataFile.println();
+
+        Serial.println("Saving data to file... Data saved successfully.");
+
+        // Close the file
+        dataFile.close();
+    } else {
+        // Debugging statement
+        Serial.println("Error: Failed to open file for writing!");
+    }
 }
+
+
 
 double calculateRPM(float angularVelocity) {
-  // Convert angular velocity from rad/s to RPM
-  double rpm = angularVelocity * 60 / (2 * M_PI);
-  return rpm;
+    // Convert angular velocity from rad/s to RPM
+    double rpm = angularVelocity * 60 / (2 * M_PI);
+    return rpm;
 }
+
 
 void showSavedData() {
-  // Open the file in read mode
-  File file = SPIFFS.open("/sensor_data.txt", "r");
-  if (!file) {
-    SerialBT.println("Failed to open file for reading");
-    return;
-  }
-
-  Serial.println("Saved Sensor Data:");
-
-  double maxTopSpeed = 0.0;
-  String maxTopSpeedRow;
-
-  // Read the content of the file line by line
-  while (file.available()) {
-    String line = file.readStringUntil('\n');
-
-    // Debugging statement
-    // Serial.println("Read line: " + line);
-
-    // Check if the line contains the relevant data
-    if (line.indexOf("Top Speed") != -1) {
-      // Extract the top speed value from the line
-      int colonIndex = line.indexOf(":");
-      double currentTopSpeed = line.substring(colonIndex + 1).toFloat();
-
-      // Update the maximum top speed and corresponding row
-      if (currentTopSpeed > maxTopSpeed) {
-        maxTopSpeed = currentTopSpeed;
-        maxTopSpeedRow = line;
-      }
+    // Open the file in read mode
+    File file = SPIFFS.open("/sensor_data.txt", "r");
+    if (!file) {
+        SerialBT.println("Failed to open file for reading");
+        return;
     }
-  }
 
-  // Display only the row with the highest top speed
-  if (!maxTopSpeedRow.isEmpty()) {
-    SerialBT.println("Highest Top Speed Data:");
-    SerialBT.println(maxTopSpeedRow);
-  } else {
-    SerialBT.println("No data available.");
-  }
+    Serial.println("Saved Sensor Data:");
 
-  // Close the file
-  file.close();
-  Serial.println("End of Sensor Data");
+    double maxTopSpeed = 0.0;
+    String maxTopSpeedRow;
+
+    // Read the content of the file line by line
+    while (file.available()) {
+        String line = file.readStringUntil('\n');
+
+        // Debugging statement
+        //Serial.println("Read line: " + line);
+
+        // Check if the line contains the relevant data
+        if (line.indexOf("Top Speed") != -1) {
+            // Extract the top speed value from the line
+            int colonIndex = line.indexOf(":");
+            double currentTopSpeed = line.substring(colonIndex + 1).toDouble();
+
+            // Update the maximum top speed and corresponding row
+            if (currentTopSpeed > maxTopSpeed) {
+                maxTopSpeed = currentTopSpeed;
+                maxTopSpeedRow = line;
+            }
+        }
+    }
+
+    // Display only the row with the highest top speed
+    if (!maxTopSpeedRow.isEmpty()) {
+        SerialBT.println("Highest Top Speed Data:");
+        SerialBT.println(maxTopSpeedRow);
+    } else {
+        SerialBT.println("No data available.");
+    }
+
+    // Close the file
+    file.close();
+    Serial.println("End of Sensor Data");
 }
+
+
+
+
+
+
 
 double calculateTopSpeed(double acceleration) {
   // Convert acceleration from m/s^2 to km/h
@@ -2681,46 +2712,47 @@ double calculateTopSpeed(double acceleration) {
 }
 
 String getTiltStrength(float gyroX, float gyroZ) {
-  // Set your threshold for tilt detection
-  float mildTiltThreshold = 0.1;
-  float strongTiltThreshold = 0.5;
+    // Set your threshold for tilt detection
+    float mildTiltThreshold = 0.1;
+    float strongTiltThreshold = 0.5;
 
-  // Check if the absolute values of gyroX and gyroZ are greater than the threshold
-  float absGyroX = fabs(gyroX);
-  float absGyroZ = fabs(gyroZ);
+    // Check if the absolute values of gyroX and gyroZ are greater than the threshold
+    float absGyroX = fabs(gyroX);
+    float absGyroZ = fabs(gyroZ);
 
-  if (absGyroX > strongTiltThreshold || absGyroZ > strongTiltThreshold) {
-    return "Strong Tilt";
-  } else if (absGyroX > mildTiltThreshold || absGyroZ > mildTiltThreshold) {
-    return "Mild Tilt";
-  } else {
-    return "No Tilt";
-  }
+    if (absGyroX > strongTiltThreshold || absGyroZ > strongTiltThreshold) {
+        return "Strong Tilt";
+    } else if (absGyroX > mildTiltThreshold || absGyroZ > mildTiltThreshold) {
+        return "Mild Tilt";
+    } else {
+        return "No Tilt";
+    }
 }
+
+
 
 void clearFileSystem() {
-  SerialBT.println("Clearing file system...");
+    SerialBT.println("Clearing file system...");
 
-  // Close the file before formatting
-  dataFile.close();
-  SerialBT.println("File closed before formatting.");
+    // Close the file before formatting
+    dataFile.close();
+    SerialBT.println("File closed before formatting.");
 
-  // Format the file system
-  if (SPIFFS.format()) {
-    SerialBT.println("File system cleared.");
+    // Format the file system
+    if (SPIFFS.format()) {
+        SerialBT.println("File system cleared.");
 
-    // Reopen the file for writing after clearing the file system
-    dataFile = SPIFFS.open("/sensor_data.txt", "w");
-    if (dataFile) {
-      SerialBT.println("File reopened for writing.");
+        // Reopen the file for writing after clearing the file system
+        dataFile = SPIFFS.open("/sensor_data.txt", "w");
+        if (dataFile) {
+            SerialBT.println("File reopened for writing.");
+        } else {
+            SerialBT.println("Failed to open file for writing.");
+        }
     } else {
-      SerialBT.println("Failed to open file for writing.");
+        SerialBT.println("Failed to format file system.");
     }
-  } else {
-    SerialBT.println("Failed to format file system.");
-  }
 }
-
 </pre>
 </details>
 
